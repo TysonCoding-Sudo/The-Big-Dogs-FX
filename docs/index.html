@@ -163,6 +163,26 @@
         .broker-item.selected { background: rgba(255, 215, 0, 0.15); border-left: 3px solid var(--primary); }
         .broker-item.hidden { display: none; }
 
+        .broker-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .broker-link:hover {
+            background: rgba(255, 215, 0, 0.25);
+            border-color: var(--primary);
+        }
+
         .broker-logo {
             width: 42px;
             height: 42px;
@@ -192,14 +212,30 @@
         }
         .selected-broker .broker-logo { width: 48px; height: 48px; }
         .selected-broker .broker-name { font-size: 16px; }
+        .selected-broker-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .selected-broker-link:hover { background: rgba(255, 215, 0, 0.3); }
         .change-broker {
-            margin-left: auto;
             color: var(--primary);
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             background: none;
             border: none;
+            flex-shrink: 0;
         }
 
         /* Form */
@@ -558,6 +594,7 @@
                                 <div class="broker-name">IFX Brokers</div>
                                 <div class="broker-desc">Global ECN/STP Broker</div>
                             </div>
+                            <a href="https://www.ifxbrokers.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
                         </div>
                         <div class="broker-item" onclick="selectBroker('xm', 'XM Broker', 'CFD & Forex', '#0d47a1')">
                             <div class="broker-logo" style="background: #0d47a1">XM</div>
@@ -565,6 +602,7 @@
                                 <div class="broker-name">XM Broker</div>
                                 <div class="broker-desc">CFD & Forex Trading</div>
                             </div>
+                            <a href="https://www.xm.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
                         </div>
                         <div class="broker-item" onclick="selectBroker('exness', 'Exness', 'Ultra-fast Withdrawals', '#f57c00')">
                             <div class="broker-logo" style="background: #f57c00">EX</div>
@@ -572,6 +610,7 @@
                                 <div class="broker-name">Exness</div>
                                 <div class="broker-desc">Ultra-fast Withdrawals</div>
                             </div>
+                            <a href="https://www.exness.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
                         </div>
                         <div class="broker-item" onclick="selectBroker('justmarkets', 'JustMarkets', 'Low Spreads', '#c62828')">
                             <div class="broker-logo" style="background: #c62828">JM</div>
@@ -579,6 +618,7 @@
                                 <div class="broker-name">JustMarkets</div>
                                 <div class="broker-desc">Low Spreads & High Leverage</div>
                             </div>
+                            <a href="https://justmarkets.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
                         </div>
                         <div class="broker-item" onclick="selectBroker('fxpro', 'FXTM (FX Pro)', 'Award-winning Platform', '#4a148c')">
                             <div class="broker-logo" style="background: #4a148c">FX</div>
@@ -586,6 +626,7 @@
                                 <div class="broker-name">FXTM (FX Pro)</div>
                                 <div class="broker-desc">Award-winning Platform</div>
                             </div>
+                            <a href="https://www.fxpro.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
                         </div>
                     </div>
 
@@ -608,6 +649,7 @@
                             <div class="broker-name" id="selBrokerName">Broker</div>
                             <div class="broker-desc" id="selBrokerDesc">Description</div>
                         </div>
+                        <a href="#" id="selBrokerLink" target="_blank" rel="noopener" class="selected-broker-link">Visit &#x1F517;</a>
                         <button class="change-broker" onclick="goToStep(1)">Change</button>
                     </div>
 
@@ -928,10 +970,18 @@
         let resendTimerInterval = null;
 
         // ===== BROKER SELECTION =====
+        const BROKER_URLS = {
+            ifx: 'https://www.ifxbrokers.com',
+            xm: 'https://www.xm.com',
+            exness: 'https://www.exness.com',
+            justmarkets: 'https://justmarkets.com',
+            fxpro: 'https://www.fxpro.com'
+        };
+
         let selectedBroker = null;
 
         function selectBroker(id, name, desc, color) {
-            selectedBroker = { id, name, desc, color };
+            selectedBroker = { id, name, desc, color, url: BROKER_URLS[id] };
             document.querySelectorAll('.broker-item').forEach(item => item.classList.remove('selected'));
             event.currentTarget.classList.add('selected');
             document.getElementById('brokerNextBtn').disabled = false;
@@ -958,6 +1008,7 @@
                 document.getElementById('selBrokerLogo').style.background = selectedBroker.color;
                 document.getElementById('selBrokerName').textContent = selectedBroker.name;
                 document.getElementById('selBrokerDesc').textContent = selectedBroker.desc;
+                document.getElementById('selBrokerLink').href = selectedBroker.url;
             }
 
             if (step === 4) {
