@@ -33,65 +33,20 @@
         .screen { display: none; min-height: 100vh; min-height: 100dvh; }
         .screen.active { display: flex; flex-direction: column; }
 
-        /* Background Animation */
-        .bg-scene {
+        /* Candlestick Background */
+        #candleCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+        }
+        .bg-gradient {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(180deg, #050505 0%, #0a0a0a 100%);
+            background: linear-gradient(180deg, rgba(10,10,10,0.3) 0%, rgba(10,10,10,0.7) 50%, rgba(10,10,10,0.9) 100%);
             z-index: 0;
-            overflow: hidden;
+            pointer-events: none;
         }
-        .bull, .bear, .pitbull {
-            position: absolute;
-            bottom: 80px;
-        }
-        .bull {
-            left: -120px;
-            animation: bullCharge 8s ease-in-out infinite;
-        }
-        .bear {
-            right: -120px;
-            animation: bearCharge 8s ease-in-out infinite;
-        }
-        .pitbull {
-            left: 50%;
-            transform: translateX(-50%);
-            top: 15%;
-            animation: pitbullWatch 10s ease-in-out infinite;
-        }
-        @keyframes bullCharge {
-            0%, 100% { left: -120px; }
-            40% { left: 25%; }
-            45% { left: 28%; }
-            50% { left: 22%; }
-            60% { left: -120px; }
-        }
-        @keyframes bearCharge {
-            0%, 100% { right: -120px; }
-            40% { right: 25%; }
-            45% { right: 28%; }
-            50% { right: 22%; }
-            60% { right: -120px; }
-        }
-        @keyframes pitbullWatch {
-            0%, 100% { top: 15%; opacity: 0.8; }
-            30% { top: 12%; opacity: 1; }
-            50% { top: 14%; opacity: 0.9; }
-            70% { top: 16%; opacity: 0.7; }
-        }
-        .floor {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            height: 80px;
-            background: var(--bg);
-            border-top: 2px solid var(--border);
-        }
-
-        /* SVG Animals */
-        .animal-svg { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.3)); }
-        .bull svg { width: 100px; height: 80px; }
-        .bear svg { width: 110px; height: 90px; }
-        .pitbull svg { width: 80px; height: 70px; }
 
         /* Login Screen */
         .login-container {
@@ -405,39 +360,9 @@
 </head>
 <body>
 
-    <!-- Background Animation -->
-    <div class="bg-scene">
-        <div class="bull">
-            <svg class="animal-svg" viewBox="0 0 100 80" fill="none">
-                <path d="M20 60 L25 20 L30 60 L40 25 L45 60 L55 25 L60 60 L70 20 L75 60 L80 30 L85 60 Z" fill="#1a472a" stroke="#2d6a4f" stroke-width="2"/>
-                <line x1="30" y1="20" x2="25" y2="0" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
-                <line x1="70" y1="20" x2="75" y2="0" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
-                <circle cx="35" cy="45" r="3" fill="#fff"/>
-                <circle cx="65" cy="45" r="3" fill="#fff"/>
-            </svg>
-        </div>
-        <div class="bear">
-            <svg class="animal-svg" viewBox="0 0 110 90" fill="none">
-                <rect x="15" y="20" width="80" height="60" rx="25" fill="#4a1c1c" stroke="#6b2d2d" stroke-width="2"/>
-                <circle cx="30" cy="15" r="12" fill="#6b2d2d"/>
-                <circle cx="80" cy="15" r="12" fill="#6b2d2d"/>
-                <circle cx="35" cy="45" r="4" fill="#fff"/>
-                <circle cx="75" cy="45" r="4" fill="#fff"/>
-                <ellipse cx="55" cy="55" rx="15" ry="10" fill="#5a2828"/>
-            </svg>
-        </div>
-        <div class="pitbull">
-            <svg class="animal-svg" viewBox="0 0 80 70" fill="none">
-                <rect x="10" y="15" width="60" height="45" rx="15" fill="#8B7355" stroke="#A0896C" stroke-width="2"/>
-                <path d="M15 15 L10 0 L25 10 Z" fill="#6B5344"/>
-                <path d="M65 15 L70 0 L55 10 Z" fill="#6B5344"/>
-                <circle cx="28" cy="35" r="4" fill="#fff"/>
-                <circle cx="52" cy="35" r="4" fill="#fff"/>
-                <ellipse cx="40" cy="48" rx="8" ry="5" fill="#6B5344"/>
-            </svg>
-        </div>
-        <div class="floor"></div>
-    </div>
+    <!-- Candlestick Background -->
+    <canvas id="candleCanvas"></canvas>
+    <div class="bg-gradient"></div>
 
     <!-- Login Screen -->
     <div id="loginScreen" class="screen active">
@@ -615,7 +540,171 @@
     </div>
 
     <script>
-        // API Configuration
+        // ===== CANDLESTICK CHART ANIMATION =====
+        (function() {
+            const canvas = document.getElementById('candleCanvas');
+            const ctx = canvas.getContext('2d');
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const NUM_CANDLES = 80;
+            const candles = [];
+            let currentPrice = 1.08500;
+            let trend = 0;
+            let trendDuration = 0;
+
+            function generateCandle() {
+                if (trendDuration <= 0) {
+                    trend = (Math.random() - 0.5) * 0.0008;
+                    trendDuration = Math.floor(Math.random() * 15) + 5;
+                }
+                trendDuration--;
+
+                const volatility = 0.0004 + Math.random() * 0.0006;
+                const open = currentPrice;
+                const direction = Math.random() > 0.48 ? 1 : -1;
+                const bodySize = Math.random() * volatility;
+                const close = open + (direction * bodySize) + (trend * 0.3);
+                const high = Math.max(open, close) + (Math.random() * volatility * 0.6);
+                const low = Math.min(open, close) - (Math.random() * volatility * 0.6);
+
+                currentPrice = close;
+
+                candles.push({ open, high, low, close });
+                if (candles.length > NUM_CANDLES) candles.shift();
+            }
+
+            for (let i = 0; i < NUM_CANDLES; i++) {
+                generateCandle();
+            }
+
+            let lastUpdate = 0;
+            const updateInterval = 800;
+
+            function drawChart(timestamp) {
+                if (timestamp - lastUpdate > updateInterval) {
+                    generateCandle();
+                    lastUpdate = timestamp;
+                }
+
+                const w = canvas.width;
+                const h = canvas.height;
+                ctx.clearRect(0, 0, w, h);
+
+                let minPrice = Infinity, maxPrice = -Infinity;
+                candles.forEach(c => {
+                    if (c.low < minPrice) minPrice = c.low;
+                    if (c.high > maxPrice) maxPrice = c.high;
+                });
+
+                const padding = (maxPrice - minPrice) * 0.15;
+                minPrice -= padding;
+                maxPrice += padding;
+
+                const priceToY = (price) => h - ((price - minPrice) / (maxPrice - minPrice)) * h;
+                const candleWidth = Math.max(4, (w / NUM_CANDLES) * 0.65);
+                const spacing = w / NUM_CANDLES;
+
+                candles.forEach((c, i) => {
+                    const x = i * spacing + spacing / 2;
+                    const isBullish = c.close >= c.open;
+                    const color = isBullish ? '#00C853' : '#FF1744';
+                    const bodyTop = priceToY(Math.max(c.open, c.close));
+                    const bodyBottom = priceToY(Math.min(c.open, c.close));
+                    const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+                    const highY = priceToY(c.high);
+                    const lowY = priceToY(c.low);
+
+                    ctx.fillStyle = color;
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.5;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x, highY);
+                    ctx.lineTo(x, lowY);
+                    ctx.stroke();
+
+                    const radius = 1.5;
+                    const bx = x - candleWidth / 2;
+                    const by = bodyTop;
+                    const bw = candleWidth;
+                    const bh = bodyHeight;
+
+                    ctx.beginPath();
+                    ctx.moveTo(bx + radius, by);
+                    ctx.lineTo(bx + bw - radius, by);
+                    ctx.arcTo(bx + bw, by, bx + bw, by + radius, radius);
+                    ctx.lineTo(bx + bw, by + bh - radius);
+                    ctx.arcTo(bx + bw, by + bh, bx + bw - radius, by + bh, radius);
+                    ctx.lineTo(bx + radius, by + bh);
+                    ctx.arcTo(bx, by + bh, bx, by + bh - radius, radius);
+                    ctx.lineTo(bx, by + radius);
+                    ctx.arcTo(bx, by, bx + radius, by, radius);
+                    ctx.closePath();
+
+                    if (isBullish) {
+                        ctx.fillStyle = 'rgba(0, 200, 83, 0.15)';
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(0, 200, 83, 0.8)';
+                        ctx.stroke();
+                    } else {
+                        ctx.fillStyle = 'rgba(255, 23, 68, 0.6)';
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(255, 23, 68, 0.9)';
+                        ctx.stroke();
+                    }
+                });
+
+                const lastCandle = candles[candles.length - 1];
+                const priceY = priceToY(lastCandle.close);
+                const isLastBullish = lastCandle.close >= lastCandle.open;
+                const lineColor = isLastBullish ? '#00C853' : '#FF1744';
+
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = lineColor + '66';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, priceY);
+                ctx.lineTo(w, priceY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                const priceLabel = lastCandle.close.toFixed(5);
+                ctx.font = 'bold 12px monospace';
+                const labelW = ctx.measureText(priceLabel).width + 12;
+                const labelH = 20;
+
+                ctx.fillStyle = lineColor;
+                ctx.beginPath();
+                ctx.roundRect(w - labelW - 4, priceY - labelH / 2, labelW, labelH, 4);
+                ctx.fill();
+
+                ctx.fillStyle = isLastBullish ? '#000' : '#fff';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(priceLabel, w - labelW + 2, priceY);
+
+                const pulseSize = 4 + Math.sin(timestamp / 300) * 2;
+                ctx.beginPath();
+                ctx.arc(w - 4, priceY, pulseSize, 0, Math.PI * 2);
+                ctx.fillStyle = lineColor + '33';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(w - 4, priceY, 3, 0, Math.PI * 2);
+                ctx.fillStyle = lineColor;
+                ctx.fill();
+
+                requestAnimationFrame(drawChart);
+            }
+
+            requestAnimationFrame(drawChart);
+        })();
+
+        // ===== APP LOGIC =====
         const API_URL = 'http://localhost:5000/api';
         let token = localStorage.getItem('userToken');
         let currentUser = null;
