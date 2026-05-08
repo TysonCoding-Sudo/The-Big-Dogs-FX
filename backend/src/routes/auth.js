@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
+const otpService = require('../services/otpService');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -99,6 +100,52 @@ router.put('/settings', async (req, res) => {
     ).select('-password');
 
     res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/send-otp', [
+  body('email').isEmail(),
+  body('otp').isLength({ min: 6, max: 6 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, otp } = req.body;
+    const result = await otpService.sendOTP(email, otp);
+
+    if (result.success) {
+      res.json({ message: 'OTP sent successfully' });
+    } else {
+      res.status(500).json({ message: 'Failed to send OTP' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/verify-otp', [
+  body('email').isEmail(),
+  body('otp').isLength({ min: 6, max: 6 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, otp } = req.body;
+    const result = otpService.verifyOTP(email, otp);
+
+    if (result.valid) {
+      res.json({ message: 'OTP verified' });
+    } else {
+      res.status(400).json({ message: result.message });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

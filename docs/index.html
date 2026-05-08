@@ -33,7 +33,6 @@
         .screen { display: none; min-height: 100vh; min-height: 100dvh; }
         .screen.active { display: flex; flex-direction: column; }
 
-        /* Candlestick Background */
         #candleCanvas {
             position: fixed;
             top: 0; left: 0;
@@ -48,7 +47,6 @@
             pointer-events: none;
         }
 
-        /* Login Screen */
         .login-container {
             position: relative;
             z-index: 1;
@@ -62,14 +60,14 @@
             background: rgba(20, 20, 20, 0.95);
             backdrop-filter: blur(20px);
             border-radius: 24px;
-            padding: 40px 32px;
+            padding: 32px 28px;
             width: 100%;
-            max-width: 420px;
+            max-width: 440px;
             border: 1px solid var(--border);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
         .brand {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 900;
             color: var(--primary);
             text-align: center;
@@ -77,23 +75,143 @@
             text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
         }
         .slogan {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             color: var(--text-secondary);
             text-align: center;
             font-style: italic;
             letter-spacing: 1px;
-            margin-top: 8px;
+            margin-top: 6px;
         }
-        .form-group { margin-top: 28px; }
+
+        /* Progress Steps */
+        .progress-steps {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 20px 0 24px;
+        }
+        .step-dot {
+            width: 32px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border);
+            transition: all 0.3s;
+        }
+        .step-dot.active { background: var(--primary); width: 48px; }
+        .step-dot.completed { background: var(--success); }
+
+        .step-title {
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+        .step-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Broker Search */
+        .search-wrapper {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 14px 16px 14px 44px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: var(--primary); }
+        .search-input::placeholder { color: var(--text-muted); }
+
+        /* Broker List */
+        .broker-list {
+            max-height: 220px;
+            overflow-y: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+        }
+        .broker-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+        .broker-item:last-child { border-bottom: none; }
+        .broker-item:hover { background: rgba(255, 215, 0, 0.05); }
+        .broker-item.selected { background: rgba(255, 215, 0, 0.15); border-left: 3px solid var(--primary); }
+        .broker-item.hidden { display: none; }
+
+        .broker-logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .broker-info { flex: 1; }
+        .broker-name { font-weight: 700; font-size: 15px; }
+        .broker-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+        /* Selected Broker Display */
+        .selected-broker {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .selected-broker .broker-logo { width: 48px; height: 48px; }
+        .selected-broker .broker-name { font-size: 16px; }
+        .change-broker {
+            margin-left: auto;
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        /* Form */
+        .form-group { margin-top: 18px; }
         .form-group label {
             display: block;
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
-        .form-group input {
+        .form-group input, .form-group select {
             width: 100%;
             padding: 14px 16px;
             background: var(--bg-input);
@@ -104,8 +222,11 @@
             outline: none;
             transition: border-color 0.2s;
         }
-        .form-group input:focus { border-color: var(--primary); }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
         .form-group input::placeholder { color: var(--text-muted); }
+        .form-group select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; }
+        .form-group select option { background: var(--bg-card); color: var(--text); }
+
         .btn {
             width: 100%;
             padding: 16px;
@@ -122,20 +243,102 @@
         }
         .btn:hover { background: #e6c200; transform: translateY(-2px); }
         .btn:active { transform: translateY(0); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         .btn-outline {
             background: transparent;
             border: 2px solid var(--primary);
             color: var(--primary);
         }
         .btn-outline:hover { background: rgba(255, 215, 0, 0.1); }
+        .btn-back {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 16px;
+            width: 100%;
+            padding: 12px;
+        }
+        .btn-back:hover { color: var(--text); }
+
+        /* OTP */
+        .otp-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 24px 0;
+        }
+        .otp-input {
+            width: 52px;
+            height: 60px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .otp-input:focus { border-color: var(--primary); }
+        .otp-info {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        .otp-email {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .resend-otp {
+            text-align: center;
+            margin-top: 16px;
+        }
+        .resend-otp button {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .resend-otp button:disabled { color: var(--text-muted); cursor: not-allowed; }
+        .resend-timer { color: var(--text-muted); font-size: 13px; }
+
+        /* Error/Success */
         .error-msg {
             color: var(--danger);
-            font-size: 14px;
-            margin-top: 12px;
+            font-size: 13px;
+            margin-top: 10px;
             text-align: center;
             display: none;
         }
         .error-msg.show { display: block; }
+        .success-msg {
+            color: var(--success);
+            font-size: 13px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        .success-msg.show { display: block; }
+
+        /* Password Toggle */
+        .password-wrapper { position: relative; }
+        .password-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 18px;
+        }
 
         /* Dashboard */
         .dashboard {
@@ -184,8 +387,19 @@
             font-size: 18px;
         }
         .welcome-text { font-size: 18px; font-weight: 600; }
+        .broker-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(255, 215, 0, 0.15);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-top: 4px;
+        }
 
-        /* Tabs */
         .tabs {
             display: flex;
             border-bottom: 1px solid var(--border);
@@ -201,12 +415,8 @@
             border-bottom: 2px solid transparent;
             transition: all 0.2s;
         }
-        .tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
-        /* Content */
         .content {
             flex: 1;
             padding: 20px;
@@ -215,7 +425,6 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -228,17 +437,9 @@
             padding: 20px;
             border: 1px solid var(--border);
         }
-        .stat-value {
-            font-size: 28px;
-            font-weight: 800;
-        }
-        .stat-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
+        .stat-value { font-size: 28px; font-weight: 800; }
+        .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 
-        /* Cards */
         .card {
             background: var(--bg-card);
             border-radius: 16px;
@@ -246,27 +447,15 @@
             border: 1px solid var(--border);
             margin-bottom: 16px;
         }
-        .card-title {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .signal-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .card-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+        .signal-item { display: flex; align-items: center; gap: 12px; }
         .signal-dot {
-            width: 10px;
-            height: 10px;
+            width: 10px; height: 10px;
             border-radius: 50%;
             background: var(--success);
             animation: pulse 2s infinite;
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .signal-text { color: var(--text-secondary); font-size: 14px; }
 
         .info-card {
@@ -282,7 +471,6 @@
         .info-icon { font-size: 24px; }
         .info-text { color: var(--text-secondary); font-size: 14px; flex: 1; }
 
-        /* Trade Cards */
         .trade-card {
             background: var(--bg-card);
             border-radius: 12px;
@@ -297,22 +485,11 @@
             margin-bottom: 12px;
         }
         .trade-symbol { font-size: 18px; font-weight: 700; }
-        .badge {
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 700;
-        }
+        .badge { padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; }
         .badge-buy { background: rgba(0, 200, 83, 0.2); color: var(--success); }
         .badge-sell { background: rgba(255, 23, 68, 0.2); color: var(--danger); }
-        .trade-details {
-            display: flex;
-            justify-content: space-between;
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
+        .trade-details { display: flex; justify-content: space-between; color: var(--text-secondary); font-size: 14px; }
 
-        /* Settings */
         .setting-item {
             display: flex;
             justify-content: space-between;
@@ -323,25 +500,14 @@
         .setting-label { color: var(--text-secondary); font-size: 14px; }
         .setting-value { font-weight: 600; font-size: 14px; }
 
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-        }
+        .empty-state { text-align: center; padding: 60px 20px; }
         .empty-icon { font-size: 64px; margin-bottom: 16px; }
         .empty-text { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
         .empty-subtext { color: var(--text-muted); font-size: 14px; }
 
-        /* Loading */
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 200px;
-        }
+        .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border: 3px solid var(--border);
             border-top-color: var(--primary);
             border-radius: 50%;
@@ -349,10 +515,9 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Responsive */
         @media (min-width: 768px) {
-            .login-card { padding: 50px 40px; }
-            .brand { font-size: 40px; }
+            .login-card { padding: 40px 36px; }
+            .brand { font-size: 36px; }
             .stats-grid { grid-template-columns: repeat(4, 1fr); }
             .content { max-width: 900px; margin: 0 auto; width: 100%; }
         }
@@ -360,71 +525,183 @@
 </head>
 <body>
 
-    <!-- Candlestick Background -->
     <canvas id="candleCanvas"></canvas>
     <div class="bg-gradient"></div>
 
-    <!-- Login Screen -->
+    <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="screen active">
         <div class="login-container">
             <div class="login-card">
                 <div class="brand">THE BIG DOGS FX</div>
                 <div class="slogan">We chase the cash</div>
-                
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="loginEmail" placeholder="Enter your email" autocomplete="email">
-                </div>
-                
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password">
+
+                <!-- STEP 1: Broker Selection -->
+                <div id="step1Broker">
+                    <div class="progress-steps">
+                        <div class="step-dot active"></div>
+                        <div class="step-dot"></div>
+                        <div class="step-dot"></div>
+                        <div class="step-dot"></div>
+                    </div>
+                    <div class="step-title">Select Your Broker</div>
+                    <div class="step-subtitle">Search and choose your trading broker</div>
+
+                    <div class="search-wrapper">
+                        <span class="search-icon">&#x1F50D;</span>
+                        <input type="text" class="search-input" id="brokerSearch" placeholder="Search broker..." oninput="filterBrokers()">
+                    </div>
+
+                    <div class="broker-list" id="brokerList">
+                        <div class="broker-item" onclick="selectBroker('ifx', 'IFX Brokers', 'Global ECN/STP', '#1a472a')">
+                            <div class="broker-logo" style="background: #1a472a">IFX</div>
+                            <div class="broker-info">
+                                <div class="broker-name">IFX Brokers</div>
+                                <div class="broker-desc">Global ECN/STP Broker</div>
+                            </div>
+                        </div>
+                        <div class="broker-item" onclick="selectBroker('xm', 'XM Broker', 'CFD & Forex', '#0d47a1')">
+                            <div class="broker-logo" style="background: #0d47a1">XM</div>
+                            <div class="broker-info">
+                                <div class="broker-name">XM Broker</div>
+                                <div class="broker-desc">CFD & Forex Trading</div>
+                            </div>
+                        </div>
+                        <div class="broker-item" onclick="selectBroker('exness', 'Exness', 'Ultra-fast Withdrawals', '#f57c00')">
+                            <div class="broker-logo" style="background: #f57c00">EX</div>
+                            <div class="broker-info">
+                                <div class="broker-name">Exness</div>
+                                <div class="broker-desc">Ultra-fast Withdrawals</div>
+                            </div>
+                        </div>
+                        <div class="broker-item" onclick="selectBroker('justmarkets', 'JustMarkets', 'Low Spreads', '#c62828')">
+                            <div class="broker-logo" style="background: #c62828">JM</div>
+                            <div class="broker-info">
+                                <div class="broker-name">JustMarkets</div>
+                                <div class="broker-desc">Low Spreads & High Leverage</div>
+                            </div>
+                        </div>
+                        <div class="broker-item" onclick="selectBroker('fxpro', 'FXTM (FX Pro)', 'Award-winning Platform', '#4a148c')">
+                            <div class="broker-logo" style="background: #4a148c">FX</div>
+                            <div class="broker-info">
+                                <div class="broker-name">FXTM (FX Pro)</div>
+                                <div class="broker-desc">Award-winning Platform</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="error-msg" id="brokerError"></p>
+                    <button class="btn" id="brokerNextBtn" onclick="goToStep(2)" disabled>NEXT</button>
                 </div>
 
-                <p class="error-msg" id="loginError"></p>
+                <!-- STEP 2: Broker Credentials -->
+                <div id="step2Credentials" style="display: none;">
+                    <div class="progress-steps">
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot active"></div>
+                        <div class="step-dot"></div>
+                        <div class="step-dot"></div>
+                    </div>
 
-                <button class="btn" onclick="handleLogin()">LOGIN</button>
-                <button class="btn btn-outline" onclick="showScreen('registerScreen')">CREATE ACCOUNT</button>
+                    <div id="selectedBrokerDisplay" class="selected-broker">
+                        <div class="broker-logo" id="selBrokerLogo" style="background: var(--primary)">B</div>
+                        <div class="broker-info">
+                            <div class="broker-name" id="selBrokerName">Broker</div>
+                            <div class="broker-desc" id="selBrokerDesc">Description</div>
+                        </div>
+                        <button class="change-broker" onclick="goToStep(1)">Change</button>
+                    </div>
+
+                    <div class="step-title">Login Credentials</div>
+                    <div class="step-subtitle">Enter your trading account details</div>
+
+                    <div class="form-group">
+                        <label>Account Number / Login ID</label>
+                        <input type="text" id="credAccount" placeholder="e.g. 12345678" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label>Trading Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="credPassword" placeholder="Enter trading password">
+                            <button class="password-toggle" onclick="togglePassword('credPassword', this)">&#x1F441;</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Server</label>
+                        <select id="credServer">
+                            <option value="">Select server...</option>
+                            <option value="Live">Live Server</option>
+                            <option value="Demo">Demo Server</option>
+                            <option value="Live2">Live Server 2</option>
+                            <option value="Real">Real Account</option>
+                        </select>
+                    </div>
+
+                    <p class="error-msg" id="credError"></p>
+                    <button class="btn" onclick="goToStep(3)">NEXT</button>
+                    <button class="btn-back" onclick="goToStep(1)">&#x2190; Back to broker selection</button>
+                </div>
+
+                <!-- STEP 3: Email for OTP -->
+                <div id="step3Email" style="display: none;">
+                    <div class="progress-steps">
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot active"></div>
+                        <div class="step-dot"></div>
+                    </div>
+                    <div class="step-title">Verify It's You</div>
+                    <div class="step-subtitle">Enter your email to receive a verification code</div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="otpEmail" placeholder="your@email.com" inputmode="email">
+                    </div>
+
+                    <p class="error-msg" id="emailError"></p>
+                    <p class="success-msg" id="emailSuccess"></p>
+                    <button class="btn" id="sendOtpBtn" onclick="sendOTP()">SEND VERIFICATION CODE</button>
+                    <button class="btn-back" onclick="goToStep(2)">&#x2190; Back to credentials</button>
+                </div>
+
+                <!-- STEP 4: OTP Verification -->
+                <div id="step4OTP" style="display: none;">
+                    <div class="progress-steps">
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot active"></div>
+                    </div>
+                    <div class="step-title">Enter Verification Code</div>
+                    <div class="step-subtitle">
+                        We sent a 6-digit code to<br>
+                        <span class="otp-email" id="otpEmailDisplay">your@email.com</span>
+                    </div>
+
+                    <div class="otp-container">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 1)" onkeydown="otpBack(event, this, 0)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 2)" onkeydown="otpBack(event, this, 1)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 3)" onkeydown="otpBack(event, this, 2)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 4)" onkeydown="otpBack(event, this, 3)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 5)" onkeydown="otpBack(event, this, 4)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, -1)" onkeydown="otpBack(event, this, 5)">
+                    </div>
+
+                    <p class="error-msg" id="otpError"></p>
+                    <p class="success-msg" id="otpSuccess"></p>
+                    <button class="btn" onclick="verifyOTP()">VERIFY & LOGIN</button>
+
+                    <div class="resend-otp">
+                        <button id="resendBtn" onclick="resendOTP()" disabled>Resend code</button>
+                        <span class="resend-timer" id="resendTimer"></span>
+                    </div>
+
+                    <button class="btn-back" onclick="goToStep(3)">&#x2190; Change email</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Register Screen -->
-    <div id="registerScreen" class="screen">
-        <div class="login-container">
-            <div class="login-card">
-                <div class="brand">THE BIG DOGS FX</div>
-                <div class="slogan">We chase the cash</div>
-                
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="regUsername" placeholder="Choose a username">
-                </div>
-                
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="regEmail" placeholder="Enter your email">
-                </div>
-                
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="regPassword" placeholder="Create a password">
-                </div>
-                
-                <div class="form-group">
-                    <label>Confirm Password</label>
-                    <input type="password" id="regConfirmPassword" placeholder="Confirm your password">
-                </div>
-
-                <p class="error-msg" id="registerError"></p>
-
-                <button class="btn" onclick="handleRegister()">SIGN UP</button>
-                <button class="btn btn-outline" onclick="showScreen('loginScreen')">BACK TO LOGIN</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Dashboard Screen -->
+    <!-- DASHBOARD SCREEN -->
     <div id="dashboardScreen" class="screen">
         <div class="dashboard">
             <div class="header">
@@ -437,7 +714,13 @@
 
             <div class="user-bar">
                 <div class="user-avatar" id="userAvatar">T</div>
-                <div class="welcome-text">Welcome, <span id="userName">Trader</span></div>
+                <div>
+                    <div class="welcome-text">Welcome, <span id="userName">Trader</span></div>
+                    <div class="broker-badge" id="brokerBadge">
+                        <span id="badgeIcon">&#x1F4C8;</span>
+                        <span id="badgeName">Connected</span>
+                    </div>
+                </div>
             </div>
 
             <div class="tabs">
@@ -447,7 +730,6 @@
             </div>
 
             <div class="content">
-                <!-- Overview Tab -->
                 <div id="overviewTab" class="tab-content active">
                     <div class="stats-grid">
                         <div class="stat-card">
@@ -482,7 +764,6 @@
                     </div>
                 </div>
 
-                <!-- Trades Tab -->
                 <div id="tradesTab" class="tab-content">
                     <div id="tradesList">
                         <div class="empty-state">
@@ -493,8 +774,23 @@
                     </div>
                 </div>
 
-                <!-- Settings Tab -->
                 <div id="settingsTab" class="tab-content">
+                    <div class="card">
+                        <div class="card-title">Connected Broker</div>
+                        <div class="setting-item">
+                            <span class="setting-label">Broker</span>
+                            <span class="setting-value" id="settingBroker">--</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Account</span>
+                            <span class="setting-value" id="settingAccount">--</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Server</span>
+                            <span class="setting-value" id="settingServer">--</span>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-title">Risk Settings</div>
                         <div class="setting-item">
@@ -503,35 +799,23 @@
                         </div>
                         <div class="setting-item">
                             <span class="setting-label">Max Open Trades</span>
-                            <span class="setting-value" id="settingMaxTrades">3</span>
+                            <span class="setting-value">3</span>
                         </div>
                         <div class="setting-item">
                             <span class="setting-label">Max Spread</span>
-                            <span class="setting-value" id="settingMaxSpread">300 pts</span>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-title">MT5 Connection</div>
-                        <div class="setting-item">
-                            <span class="setting-label">Account</span>
-                            <span class="setting-value" id="settingMt5Account">Not connected</span>
-                        </div>
-                        <div class="setting-item">
-                            <span class="setting-label">Server</span>
-                            <span class="setting-value" id="settingMt5Server">--</span>
+                            <span class="setting-value">300 pts</span>
                         </div>
                     </div>
 
                     <div class="card">
                         <div class="card-title">Account</div>
                         <div class="setting-item">
-                            <span class="setting-label">Username</span>
-                            <span class="setting-value" id="settingUsername">--</span>
-                        </div>
-                        <div class="setting-item">
                             <span class="setting-label">Email</span>
                             <span class="setting-value" id="settingEmail">--</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Status</span>
+                            <span class="setting-value" style="color: var(--success)">&#x2713; Verified</span>
                         </div>
                     </div>
                 </div>
@@ -544,11 +828,7 @@
         (function() {
             const canvas = document.getElementById('candleCanvas');
             const ctx = canvas.getContext('2d');
-
-            function resize() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            }
+            function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
             resize();
             window.addEventListener('resize', resize);
 
@@ -559,12 +839,8 @@
             let trendDuration = 0;
 
             function generateCandle() {
-                if (trendDuration <= 0) {
-                    trend = (Math.random() - 0.5) * 0.0008;
-                    trendDuration = Math.floor(Math.random() * 15) + 5;
-                }
+                if (trendDuration <= 0) { trend = (Math.random() - 0.5) * 0.0008; trendDuration = Math.floor(Math.random() * 15) + 5; }
                 trendDuration--;
-
                 const volatility = 0.0004 + Math.random() * 0.0006;
                 const open = currentPrice;
                 const direction = Math.random() > 0.48 ? 1 : -1;
@@ -572,148 +848,298 @@
                 const close = open + (direction * bodySize) + (trend * 0.3);
                 const high = Math.max(open, close) + (Math.random() * volatility * 0.6);
                 const low = Math.min(open, close) - (Math.random() * volatility * 0.6);
-
                 currentPrice = close;
-
                 candles.push({ open, high, low, close });
                 if (candles.length > NUM_CANDLES) candles.shift();
             }
 
-            for (let i = 0; i < NUM_CANDLES; i++) {
-                generateCandle();
-            }
+            for (let i = 0; i < NUM_CANDLES; i++) generateCandle();
 
             let lastUpdate = 0;
-            const updateInterval = 800;
-
             function drawChart(timestamp) {
-                if (timestamp - lastUpdate > updateInterval) {
-                    generateCandle();
-                    lastUpdate = timestamp;
-                }
-
-                const w = canvas.width;
-                const h = canvas.height;
+                if (timestamp - lastUpdate > 800) { generateCandle(); lastUpdate = timestamp; }
+                const w = canvas.width, h = canvas.height;
                 ctx.clearRect(0, 0, w, h);
 
-                let minPrice = Infinity, maxPrice = -Infinity;
-                candles.forEach(c => {
-                    if (c.low < minPrice) minPrice = c.low;
-                    if (c.high > maxPrice) maxPrice = c.high;
-                });
-
-                const padding = (maxPrice - minPrice) * 0.15;
-                minPrice -= padding;
-                maxPrice += padding;
-
-                const priceToY = (price) => h - ((price - minPrice) / (maxPrice - minPrice)) * h;
-                const candleWidth = Math.max(4, (w / NUM_CANDLES) * 0.65);
-                const spacing = w / NUM_CANDLES;
+                let minP = Infinity, maxP = -Infinity;
+                candles.forEach(c => { if (c.low < minP) minP = c.low; if (c.high > maxP) maxP = c.high; });
+                const pad = (maxP - minP) * 0.15;
+                minP -= pad; maxP += pad;
+                const toY = (p) => h - ((p - minP) / (maxP - minP)) * h;
+                const cw = Math.max(4, (w / NUM_CANDLES) * 0.65);
+                const sp = w / NUM_CANDLES;
 
                 candles.forEach((c, i) => {
-                    const x = i * spacing + spacing / 2;
-                    const isBullish = c.close >= c.open;
-                    const color = isBullish ? '#00C853' : '#FF1744';
-                    const bodyTop = priceToY(Math.max(c.open, c.close));
-                    const bodyBottom = priceToY(Math.min(c.open, c.close));
-                    const bodyHeight = Math.max(1, bodyBottom - bodyTop);
-                    const highY = priceToY(c.high);
-                    const lowY = priceToY(c.low);
+                    const x = i * sp + sp / 2;
+                    const bull = c.close >= c.open;
+                    const col = bull ? '#00C853' : '#FF1744';
+                    const bTop = toY(Math.max(c.open, c.close));
+                    const bBot = toY(Math.min(c.open, c.close));
+                    const bH = Math.max(1, bBot - bTop);
 
-                    ctx.fillStyle = color;
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(x, toY(c.high)); ctx.lineTo(x, toY(c.low)); ctx.stroke();
 
+                    const r = 1.5, bx = x - cw / 2;
                     ctx.beginPath();
-                    ctx.moveTo(x, highY);
-                    ctx.lineTo(x, lowY);
-                    ctx.stroke();
-
-                    const radius = 1.5;
-                    const bx = x - candleWidth / 2;
-                    const by = bodyTop;
-                    const bw = candleWidth;
-                    const bh = bodyHeight;
-
-                    ctx.beginPath();
-                    ctx.moveTo(bx + radius, by);
-                    ctx.lineTo(bx + bw - radius, by);
-                    ctx.arcTo(bx + bw, by, bx + bw, by + radius, radius);
-                    ctx.lineTo(bx + bw, by + bh - radius);
-                    ctx.arcTo(bx + bw, by + bh, bx + bw - radius, by + bh, radius);
-                    ctx.lineTo(bx + radius, by + bh);
-                    ctx.arcTo(bx, by + bh, bx, by + bh - radius, radius);
-                    ctx.lineTo(bx, by + radius);
-                    ctx.arcTo(bx, by, bx + radius, by, radius);
+                    ctx.moveTo(bx + r, bTop); ctx.lineTo(bx + cw - r, bTop);
+                    ctx.arcTo(bx + cw, bTop, bx + cw, bTop + r, r);
+                    ctx.lineTo(bx + cw, bBot - r); ctx.arcTo(bx + cw, bBot, bx + cw - r, bBot, r);
+                    ctx.lineTo(bx + r, bBot); ctx.arcTo(bx, bBot, bx, bBot - r, r);
+                    ctx.lineTo(bx, bTop + r); ctx.arcTo(bx, bTop, bx + r, bTop, r);
                     ctx.closePath();
 
-                    if (isBullish) {
-                        ctx.fillStyle = 'rgba(0, 200, 83, 0.15)';
-                        ctx.fill();
-                        ctx.strokeStyle = 'rgba(0, 200, 83, 0.8)';
-                        ctx.stroke();
-                    } else {
-                        ctx.fillStyle = 'rgba(255, 23, 68, 0.6)';
-                        ctx.fill();
-                        ctx.strokeStyle = 'rgba(255, 23, 68, 0.9)';
-                        ctx.stroke();
-                    }
+                    ctx.fillStyle = bull ? 'rgba(0,200,83,0.15)' : 'rgba(255,23,68,0.6)';
+                    ctx.fill();
+                    ctx.strokeStyle = bull ? 'rgba(0,200,83,0.8)' : 'rgba(255,23,68,0.9)';
+                    ctx.stroke();
                 });
 
-                const lastCandle = candles[candles.length - 1];
-                const priceY = priceToY(lastCandle.close);
-                const isLastBullish = lastCandle.close >= lastCandle.open;
-                const lineColor = isLastBullish ? '#00C853' : '#FF1744';
+                const last = candles[candles.length - 1];
+                const pY = toY(last.close);
+                const bull = last.close >= last.open;
+                const lc = bull ? '#00C853' : '#FF1744';
 
-                ctx.setLineDash([5, 5]);
-                ctx.strokeStyle = lineColor + '66';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(0, priceY);
-                ctx.lineTo(w, priceY);
-                ctx.stroke();
-                ctx.setLineDash([]);
+                ctx.setLineDash([5, 5]); ctx.strokeStyle = lc + '66'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(0, pY); ctx.lineTo(w, pY); ctx.stroke(); ctx.setLineDash([]);
 
-                const priceLabel = lastCandle.close.toFixed(5);
+                const lbl = last.close.toFixed(5);
                 ctx.font = 'bold 12px monospace';
-                const labelW = ctx.measureText(priceLabel).width + 12;
-                const labelH = 20;
+                const lw = ctx.measureText(lbl).width + 12;
+                ctx.fillStyle = lc;
+                ctx.beginPath(); ctx.roundRect(w - lw - 4, pY - 10, lw, 20, 4); ctx.fill();
+                ctx.fillStyle = bull ? '#000' : '#fff'; ctx.textBaseline = 'middle';
+                ctx.fillText(lbl, w - lw + 2, pY);
 
-                ctx.fillStyle = lineColor;
-                ctx.beginPath();
-                ctx.roundRect(w - labelW - 4, priceY - labelH / 2, labelW, labelH, 4);
-                ctx.fill();
-
-                ctx.fillStyle = isLastBullish ? '#000' : '#fff';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(priceLabel, w - labelW + 2, priceY);
-
-                const pulseSize = 4 + Math.sin(timestamp / 300) * 2;
-                ctx.beginPath();
-                ctx.arc(w - 4, priceY, pulseSize, 0, Math.PI * 2);
-                ctx.fillStyle = lineColor + '33';
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(w - 4, priceY, 3, 0, Math.PI * 2);
-                ctx.fillStyle = lineColor;
-                ctx.fill();
+                const ps = 4 + Math.sin(timestamp / 300) * 2;
+                ctx.beginPath(); ctx.arc(w - 4, pY, ps, 0, Math.PI * 2); ctx.fillStyle = lc + '33'; ctx.fill();
+                ctx.beginPath(); ctx.arc(w - 4, pY, 3, 0, Math.PI * 2); ctx.fillStyle = lc; ctx.fill();
 
                 requestAnimationFrame(drawChart);
             }
-
             requestAnimationFrame(drawChart);
         })();
 
-        // ===== APP LOGIC =====
+        // ===== APP STATE =====
         const API_URL = 'http://localhost:5000/api';
         let token = localStorage.getItem('userToken');
-        let currentUser = null;
-        let trades = [];
+        let session = JSON.parse(localStorage.getItem('bdSession') || 'null');
+        let generatedOTP = '';
+        let resendTimerInterval = null;
 
-        // Screen Management
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
+        // ===== BROKER SELECTION =====
+        let selectedBroker = null;
+
+        function selectBroker(id, name, desc, color) {
+            selectedBroker = { id, name, desc, color };
+            document.querySelectorAll('.broker-item').forEach(item => item.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            document.getElementById('brokerNextBtn').disabled = false;
+            document.getElementById('brokerError').classList.remove('show');
+        }
+
+        function filterBrokers() {
+            const query = document.getElementById('brokerSearch').value.toLowerCase();
+            document.querySelectorAll('.broker-item').forEach(item => {
+                const name = item.querySelector('.broker-name').textContent.toLowerCase();
+                item.classList.toggle('hidden', !name.includes(query));
+            });
+        }
+
+        // ===== STEP NAVIGATION =====
+        function goToStep(step) {
+            document.getElementById('step1Broker').style.display = step === 1 ? 'block' : 'none';
+            document.getElementById('step2Credentials').style.display = step === 2 ? 'block' : 'none';
+            document.getElementById('step3Email').style.display = step === 3 ? 'block' : 'none';
+            document.getElementById('step4OTP').style.display = step === 4 ? 'block' : 'none';
+
+            if (step === 2 && selectedBroker) {
+                document.getElementById('selBrokerLogo').textContent = selectedBroker.name.substring(0, 2).toUpperCase();
+                document.getElementById('selBrokerLogo').style.background = selectedBroker.color;
+                document.getElementById('selBrokerName').textContent = selectedBroker.name;
+                document.getElementById('selBrokerDesc').textContent = selectedBroker.desc;
+            }
+
+            if (step === 4) {
+                document.getElementById('otpEmailDisplay').textContent = document.getElementById('otpEmail').value;
+                startResendTimer();
+            }
+
+            document.getElementById('brokerError').classList.remove('show');
+            document.getElementById('credError').classList.remove('show');
+            document.getElementById('emailError').classList.remove('show');
+            document.getElementById('emailSuccess').classList.remove('show');
+            document.getElementById('otpError').classList.remove('show');
+            document.getElementById('otpSuccess').classList.remove('show');
+        }
+
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.innerHTML = '&#x2713;';
+            } else {
+                input.type = 'password';
+                btn.innerHTML = '&#x1F441;';
+            }
+        }
+
+        // ===== OTP =====
+        function generateOTP() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
+        async function sendOTP() {
+            const email = document.getElementById('otpEmail').value.trim();
+            const errorEl = document.getElementById('emailError');
+            const successEl = document.getElementById('emailSuccess');
+
+            if (!email || !email.includes('@')) {
+                errorEl.textContent = 'Please enter a valid email address';
+                errorEl.classList.add('show');
+                return;
+            }
+
+            generatedOTP = generateOTP();
+
+            try {
+                const btn = document.getElementById('sendOtpBtn');
+                btn.disabled = true;
+                btn.textContent = 'SENDING...';
+
+                await fetch(API_URL + '/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp: generatedOTP })
+                });
+
+                successEl.textContent = 'Verification code sent to your email!';
+                successEl.classList.add('show');
+                errorEl.classList.remove('show');
+
+                setTimeout(() => goToStep(4), 1200);
+            } catch {
+                successEl.textContent = `Demo mode: Your code is ${generatedOTP}`;
+                successEl.classList.add('show');
+                setTimeout(() => goToStep(4), 2000);
+            }
+        }
+
+        function startResendTimer() {
+            let seconds = 60;
+            const btn = document.getElementById('resendBtn');
+            const timer = document.getElementById('resendTimer');
+            btn.disabled = true;
+            timer.textContent = `Resend in ${seconds}s`;
+
+            if (resendTimerInterval) clearInterval(resendTimerInterval);
+            resendTimerInterval = setInterval(() => {
+                seconds--;
+                timer.textContent = `Resend in ${seconds}s`;
+                if (seconds <= 0) {
+                    clearInterval(resendTimerInterval);
+                    btn.disabled = false;
+                    timer.textContent = '';
+                }
+            }, 1000);
+        }
+
+        async function resendOTP() {
+            generatedOTP = generateOTP();
+            try {
+                await fetch(API_URL + '/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: document.getElementById('otpEmail').value, otp: generatedOTP })
+                });
+            } catch {}
+            alert(`New code: ${generatedOTP}`);
+            startResendTimer();
+        }
+
+        function otpMove(current, next) {
+            if (current.value.length === 1 && next >= 0) {
+                const inputs = document.querySelectorAll('.otp-input');
+                if (next < inputs.length) inputs[next].focus();
+            }
+        }
+
+        function otpBack(e, current, index) {
+            if (e.key === 'Backspace' && current.value === '' && index > 0) {
+                document.querySelectorAll('.otp-input')[index - 1].focus();
+            }
+        }
+
+        function verifyOTP() {
+            const inputs = document.querySelectorAll('.otp-input');
+            let code = '';
+            inputs.forEach(i => code += i.value);
+
+            if (code.length !== 6) {
+                document.getElementById('otpError').textContent = 'Please enter the full 6-digit code';
+                document.getElementById('otpError').classList.add('show');
+                return;
+            }
+
+            if (code !== generatedOTP) {
+                document.getElementById('otpError').textContent = 'Invalid code. Please try again.';
+                document.getElementById('otpError').classList.add('show');
+                return;
+            }
+
+            document.getElementById('otpSuccess').textContent = 'Verified! Logging in...';
+            document.getElementById('otpSuccess').classList.add('show');
+            document.getElementById('otpError').classList.remove('show');
+
+            const account = document.getElementById('credAccount').value;
+            const server = document.getElementById('credServer').value;
+
+            session = {
+                broker: selectedBroker,
+                account: account,
+                server: server,
+                email: document.getElementById('otpEmail').value,
+                verified: true,
+                loginTime: Date.now()
+            };
+            localStorage.setItem('bdSession', JSON.stringify(session));
+
+            setTimeout(() => loadDashboard(), 1000);
+        }
+
+        // ===== DASHBOARD =====
+        function loadDashboard() {
+            document.getElementById('loginScreen').classList.remove('active');
+            document.getElementById('dashboardScreen').classList.add('active');
+
+            if (session) {
+                const name = session.broker ? session.broker.name.split(' ')[0] : 'Trader';
+                document.getElementById('userName').textContent = name;
+                document.getElementById('userAvatar').textContent = name[0];
+                document.getElementById('badgeName').textContent = `Connected via ${session.broker.name}`;
+                document.getElementById('settingBroker').textContent = session.broker.name;
+                document.getElementById('settingAccount').textContent = session.account || '--';
+                document.getElementById('settingServer').textContent = session.server || '--';
+                document.getElementById('settingEmail').textContent = session.email || '--';
+            }
+        }
+
+        function handleLogout() {
+            token = null;
+            session = null;
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('bdSession');
+            document.getElementById('dashboardScreen').classList.remove('active');
+            document.getElementById('loginScreen').classList.add('active');
+            goToStep(1);
+            document.getElementById('credAccount').value = '';
+            document.getElementById('credPassword').value = '';
+            document.getElementById('credServer').value = '';
+            document.getElementById('otpEmail').value = '';
+            document.querySelectorAll('.otp-input').forEach(i => i.value = '');
+            document.querySelectorAll('.broker-item').forEach(i => i.classList.remove('selected'));
+            document.getElementById('brokerNextBtn').disabled = true;
+            selectedBroker = null;
         }
 
         function switchTab(tabName) {
@@ -723,210 +1149,17 @@
             document.getElementById(tabName + 'Tab').classList.add('active');
         }
 
-        // Auth Functions
-        async function apiCall(endpoint, options = {}) {
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            
-            const response = await fetch(API_URL + endpoint, {
-                ...options,
-                headers: { ...headers, ...options.headers }
-            });
-            
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({ message: 'Request failed' }));
-                throw new Error(error.message);
-            }
-            
-            return response.json();
+        // Check existing session
+        if (session && session.verified && (Date.now() - session.loginTime < 86400000)) {
+            loadDashboard();
         }
 
-        async function handleLogin() {
-            const email = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            const errorEl = document.getElementById('loginError');
-            
-            if (!email || !password) {
-                errorEl.textContent = 'Please fill in all fields';
-                errorEl.classList.add('show');
-                return;
-            }
-
-            try {
-                errorEl.classList.remove('show');
-                const data = await apiCall('/auth/login', {
-                    method: 'POST',
-                    body: JSON.stringify({ email, password })
-                });
-                
-                token = data.token;
-                localStorage.setItem('userToken', token);
-                currentUser = data;
-                loadDashboard();
-            } catch (err) {
-                errorEl.textContent = 'Invalid email or password';
-                errorEl.classList.add('show');
-            }
-        }
-
-        async function handleRegister() {
-            const username = document.getElementById('regUsername').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value;
-            const confirmPassword = document.getElementById('regConfirmPassword').value;
-            const errorEl = document.getElementById('registerError');
-
-            if (!username || !email || !password || !confirmPassword) {
-                errorEl.textContent = 'Please fill in all fields';
-                errorEl.classList.add('show');
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                errorEl.textContent = 'Passwords do not match';
-                errorEl.classList.add('show');
-                return;
-            }
-
-            if (password.length < 6) {
-                errorEl.textContent = 'Password must be at least 6 characters';
-                errorEl.classList.add('show');
-                return;
-            }
-
-            try {
-                errorEl.classList.remove('show');
-                const data = await apiCall('/auth/register', {
-                    method: 'POST',
-                    body: JSON.stringify({ username, email, password })
-                });
-                
-                token = data.token;
-                localStorage.setItem('userToken', token);
-                currentUser = data;
-                loadDashboard();
-            } catch (err) {
-                errorEl.textContent = 'Username or email may already be taken';
-                errorEl.classList.add('show');
-            }
-        }
-
-        function handleLogout() {
-            token = null;
-            currentUser = null;
-            localStorage.removeItem('userToken');
-            showScreen('loginScreen');
-        }
-
-        // Dashboard Functions
-        async function loadDashboard() {
-            showScreen('dashboardScreen');
-            
-            if (currentUser) {
-                document.getElementById('userName').textContent = currentUser.username || 'Trader';
-                document.getElementById('userAvatar').textContent = (currentUser.username || 'T')[0].toUpperCase();
-                document.getElementById('settingUsername').textContent = currentUser.username || '--';
-                document.getElementById('settingEmail').textContent = currentUser.email || '--';
-                
-                if (currentUser.riskSettings) {
-                    document.getElementById('settingRisk').textContent = (currentUser.riskSettings.riskPercent || 2) + '%';
-                    document.getElementById('settingMaxTrades').textContent = currentUser.riskSettings.maxTrades || 3;
-                    document.getElementById('settingMaxSpread').textContent = (currentUser.riskSettings.maxSpread || 300) + ' pts';
-                }
-                
-                if (currentUser.mt5Account) {
-                    document.getElementById('settingMt5Account').textContent = currentUser.mt5Account.login || 'Not connected';
-                    document.getElementById('settingMt5Server').textContent = currentUser.mt5Account.server || '--';
-                }
-            }
-
-            try {
-                const [stats, tradesData] = await Promise.all([
-                    apiCall('/trades/stats'),
-                    apiCall('/trades')
-                ]);
-
-                document.getElementById('statWinRate').textContent = stats.winRate + '%';
-                document.getElementById('statPnl').textContent = '$' + stats.totalPnl.toFixed(2);
-                document.getElementById('statPnl').style.color = stats.totalPnl >= 0 ? 'var(--success)' : 'var(--danger)';
-                document.getElementById('statOpen').textContent = stats.open;
-                document.getElementById('statTotal').textContent = stats.total;
-
-                trades = tradesData;
-                renderTrades();
-            } catch {
-                // Offline mode - show demo data
-                showOfflineMode();
-            }
-        }
-
-        function renderTrades() {
-            const container = document.getElementById('tradesList');
-            
-            if (trades.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">&#x1F4C8;</div>
-                        <div class="empty-text">No trades yet</div>
-                        <div class="empty-subtext">Trades will appear here when the EA executes</div>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = trades.map(trade => `
-                <div class="trade-card">
-                    <div class="trade-header">
-                        <span class="trade-symbol">${trade.symbol}</span>
-                        <span class="badge ${trade.type === 'BUY' ? 'badge-buy' : 'badge-sell'}">${trade.type}</span>
-                    </div>
-                    <div class="trade-details">
-                        <span>Lot: ${trade.lotSize}</span>
-                        <span>Entry: ${trade.openPrice}</span>
-                        <span>P&L: $${trade.pnl?.toFixed(2) ?? '--'}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function showOfflineMode() {
-            document.getElementById('statWinRate').textContent = '0%';
-            document.getElementById('statPnl').textContent = '$0.00';
-            document.getElementById('statOpen').textContent = '0';
-            document.getElementById('statTotal').textContent = '0';
-            
-            document.getElementById('tradesList').innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">&#x1F4C8;</div>
-                    <div class="empty-text">No trades yet</div>
-                    <div class="empty-subtext">Connect to the backend server to start trading</div>
-                </div>
-            `;
-        }
-
-        // Initialize - check for existing session
-        async function init() {
-            if (token) {
-                try {
-                    currentUser = await apiCall('/auth/profile');
-                    loadDashboard();
-                } catch {
-                    localStorage.removeItem('userToken');
-                    token = null;
-                    showScreen('loginScreen');
-                }
-            }
-        }
-
-        // Enter key support
-        document.getElementById('loginPassword').addEventListener('keypress', e => {
-            if (e.key === 'Enter') handleLogin();
+        document.getElementById('credPassword').addEventListener('keypress', e => {
+            if (e.key === 'Enter') goToStep(3);
         });
-        document.getElementById('regConfirmPassword').addEventListener('keypress', e => {
-            if (e.key === 'Enter') handleRegister();
+        document.getElementById('otpEmail').addEventListener('keypress', e => {
+            if (e.key === 'Enter') sendOTP();
         });
-
-        init();
     </script>
 </body>
 </html>
