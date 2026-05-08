@@ -184,17 +184,19 @@
         }
 
         .broker-logo {
-            width: 42px;
-            height: 42px;
-            border-radius: 10px;
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            font-size: 14px;
-            color: #fff;
             flex-shrink: 0;
+            background: #1a1a1a;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            position: relative;
         }
+        .broker-logo svg { width: 40px; height: 40px; }
         .broker-info { flex: 1; }
         .broker-name { font-weight: 700; font-size: 15px; }
         .broker-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
@@ -210,7 +212,7 @@
             border-radius: 12px;
             margin-bottom: 20px;
         }
-        .selected-broker .broker-logo { width: 48px; height: 48px; }
+        .selected-broker .broker-logo { width: 56px; height: 56px; }
         .selected-broker .broker-name { font-size: 16px; }
         .selected-broker-link {
             display: inline-flex;
@@ -435,6 +437,7 @@
             color: var(--primary);
             margin-top: 4px;
         }
+        .broker-badge svg { width: 18px; height: 18px; }
 
         .tabs {
             display: flex;
@@ -589,7 +592,13 @@
 
                     <div class="broker-list" id="brokerList">
                         <div class="broker-item" onclick="selectBroker('ifx', 'IFX Brokers', 'Global ECN/STP', '#1a472a')">
-                            <div class="broker-logo" style="background: #1a472a">IFX</div>
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#1a472a"/>
+                                    <path d="M14 18h8v20h-8zM24 18h8v20h-8zM34 18h8v20h-8z" fill="#4ade80"/>
+                                    <text x="28" y="48" text-anchor="middle" fill="#4ade80" font-size="7" font-weight="800" font-family="Arial">BROKERS</text>
+                                </svg>
+                            </div>
                             <div class="broker-info">
                                 <div class="broker-name">IFX Brokers</div>
                                 <div class="broker-desc">Global ECN/STP Broker</div>
@@ -597,15 +606,26 @@
                             <a href="https://www.ifxbrokers.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
                         </div>
                         <div class="broker-item" onclick="selectBroker('xm', 'XM Broker', 'CFD & Forex', '#0d47a1')">
-                            <div class="broker-logo" style="background: #0d47a1">XM</div>
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#0d47a1"/>
+                                    <text x="28" y="38" text-anchor="middle" fill="#fff" font-size="22" font-weight="900" font-family="Arial">XM</text>
+                                </svg>
+                            </div>
                             <div class="broker-info">
                                 <div class="broker-name">XM Broker</div>
-                                <div class="broker-desc">CFD & Forex Trading</div>
+                                <div class="broker-desc">CFD &amp; Forex Trading</div>
                             </div>
                             <a href="https://www.xm.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
                         </div>
                         <div class="broker-item" onclick="selectBroker('exness', 'Exness', 'Ultra-fast Withdrawals', '#f57c00')">
-                            <div class="broker-logo" style="background: #f57c00">EX</div>
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#f57c00"/>
+                                    <text x="28" y="36" text-anchor="middle" fill="#fff" font-size="16" font-weight="900" font-family="Arial">EX</text>
+                                    <text x="28" y="48" text-anchor="middle" fill="#fff" font-size="7" font-weight="600" font-family="Arial">NESS</text>
+                                </svg>
+                            </div>
                             <div class="broker-info">
                                 <div class="broker-name">Exness</div>
                                 <div class="broker-desc">Ultra-fast Withdrawals</div>
@@ -613,15 +633,29 @@
                             <a href="https://www.exness.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
                         </div>
                         <div class="broker-item" onclick="selectBroker('justmarkets', 'JustMarkets', 'Low Spreads', '#c62828')">
-                            <div class="broker-logo" style="background: #c62828">JM</div>
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#c62828"/>
+                                    <path d="M12 28 L22 18 L32 28 L44 16" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                    <circle cx="44" cy="16" r="3" fill="#fff"/>
+                                    <text x="28" y="48" text-anchor="middle" fill="#fff" font-size="7" font-weight="800" font-family="Arial">JM</text>
+                                </svg>
+                            </div>
                             <div class="broker-info">
                                 <div class="broker-name">JustMarkets</div>
-                                <div class="broker-desc">Low Spreads & High Leverage</div>
+                                <div class="broker-desc">Low Spreads &amp; High Leverage</div>
                             </div>
                             <a href="https://justmarkets.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
                         </div>
                         <div class="broker-item" onclick="selectBroker('fxpro', 'FXTM (FX Pro)', 'Award-winning Platform', '#4a148c')">
-                            <div class="broker-logo" style="background: #4a148c">FX</div>
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#4a148c"/>
+                                    <text x="18" y="32" text-anchor="middle" fill="#fff" font-size="14" font-weight="900" font-family="Arial">FX</text>
+                                    <text x="40" y="32" text-anchor="middle" fill="#e040fb" font-size="14" font-weight="900" font-family="Arial">P</text>
+                                    <line x1="28" y1="20" x2="28" y2="40" stroke="#e040fb" stroke-width="2"/>
+                                </svg>
+                            </div>
                             <div class="broker-info">
                                 <div class="broker-name">FXTM (FX Pro)</div>
                                 <div class="broker-desc">Award-winning Platform</div>
@@ -644,7 +678,7 @@
                     </div>
 
                     <div id="selectedBrokerDisplay" class="selected-broker">
-                        <div class="broker-logo" id="selBrokerLogo" style="background: var(--primary)">B</div>
+                        <div class="broker-logo" id="selBrokerLogo"></div>
                         <div class="broker-info">
                             <div class="broker-name" id="selBrokerName">Broker</div>
                             <div class="broker-desc" id="selBrokerDesc">Description</div>
@@ -759,7 +793,7 @@
                 <div>
                     <div class="welcome-text">Welcome, <span id="userName">Trader</span></div>
                     <div class="broker-badge" id="brokerBadge">
-                        <span id="badgeIcon">&#x1F4C8;</span>
+                        <div id="badgeLogo" style="width:18px;height:18px;display:inline-flex"></div>
                         <span id="badgeName">Connected</span>
                     </div>
                 </div>
@@ -978,6 +1012,14 @@
             fxpro: 'https://www.fxpro.com'
         };
 
+        const BROKER_LOGOS = {
+            ifx: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#1a472a"/><path d="M14 18h8v20h-8zM24 18h8v20h-8zM34 18h8v20h-8z" fill="#4ade80"/><text x="28" y="48" text-anchor="middle" fill="#4ade80" font-size="7" font-weight="800" font-family="Arial">BROKERS</text></svg>`,
+            xm: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#0d47a1"/><text x="28" y="38" text-anchor="middle" fill="#fff" font-size="22" font-weight="900" font-family="Arial">XM</text></svg>`,
+            exness: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#f57c00"/><text x="28" y="36" text-anchor="middle" fill="#fff" font-size="16" font-weight="900" font-family="Arial">EX</text><text x="28" y="48" text-anchor="middle" fill="#fff" font-size="7" font-weight="600" font-family="Arial">NESS</text></svg>`,
+            justmarkets: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#c62828"/><path d="M12 28 L22 18 L32 28 L44 16" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="44" cy="16" r="3" fill="#fff"/><text x="28" y="48" text-anchor="middle" fill="#fff" font-size="7" font-weight="800" font-family="Arial">JM</text></svg>`,
+            fxpro: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#4a148c"/><text x="18" y="32" text-anchor="middle" fill="#fff" font-size="14" font-weight="900" font-family="Arial">FX</text><text x="40" y="32" text-anchor="middle" fill="#e040fb" font-size="14" font-weight="900" font-family="Arial">P</text><line x1="28" y1="20" x2="28" y2="40" stroke="#e040fb" stroke-width="2"/></svg>`
+        };
+
         let selectedBroker = null;
 
         function selectBroker(id, name, desc, color) {
@@ -1004,8 +1046,7 @@
             document.getElementById('step4OTP').style.display = step === 4 ? 'block' : 'none';
 
             if (step === 2 && selectedBroker) {
-                document.getElementById('selBrokerLogo').textContent = selectedBroker.name.substring(0, 2).toUpperCase();
-                document.getElementById('selBrokerLogo').style.background = selectedBroker.color;
+                document.getElementById('selBrokerLogo').innerHTML = BROKER_LOGOS[selectedBroker.id];
                 document.getElementById('selBrokerName').textContent = selectedBroker.name;
                 document.getElementById('selBrokerDesc').textContent = selectedBroker.desc;
                 document.getElementById('selBrokerLink').href = selectedBroker.url;
@@ -1168,6 +1209,9 @@
                 document.getElementById('userName').textContent = name;
                 document.getElementById('userAvatar').textContent = name[0];
                 document.getElementById('badgeName').textContent = `Connected via ${session.broker.name}`;
+                if (session.broker && BROKER_LOGOS[session.broker.id]) {
+                    document.getElementById('badgeLogo').innerHTML = BROKER_LOGOS[session.broker.id];
+                }
                 document.getElementById('settingBroker').textContent = session.broker.name;
                 document.getElementById('settingAccount').textContent = session.account || '--';
                 document.getElementById('settingServer').textContent = session.server || '--';
