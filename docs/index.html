@@ -554,6 +554,94 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* Session Tracker */
+        .session-tracker {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .session-title { font-size: 16px; font-weight: 700; }
+        .market-status {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .market-status.open { background: rgba(0, 200, 83, 0.2); color: var(--success); }
+        .market-status.closed { background: rgba(255, 23, 68, 0.2); color: var(--danger); }
+
+        .countdown-section {
+            text-align: center;
+            padding: 16px;
+            background: rgba(255, 215, 0, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            margin-bottom: 16px;
+        }
+        .countdown-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+        .countdown-timer {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary);
+            font-family: monospace;
+            letter-spacing: 2px;
+        }
+
+        .sessions-list { display: flex; flex-direction: column; gap: 12px; }
+        .session-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--bg-input);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+        .session-item.active {
+            border-color: var(--success);
+            background: rgba(0, 200, 83, 0.08);
+        }
+        .session-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .session-item.active .session-dot {
+            background: var(--success);
+            animation: blinkDot 1.5s ease-in-out infinite;
+        }
+        @keyframes blinkDot {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 200, 83, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(0, 200, 83, 0); }
+        }
+        .session-flag {
+            font-size: 20px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .session-dot { display: none; }
+        .session-name { font-weight: 700; font-size: 14px; flex: 1; }
+        .session-time { font-size: 12px; color: var(--text-secondary); }
+        .session-status {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .session-status.open { background: rgba(0, 200, 83, 0.2); color: var(--success); }
+        .session-status.closed { background: rgba(255, 23, 68, 0.2); color: var(--danger); }
+
         @media (min-width: 768px) {
             .login-card { padding: 40px 36px; }
             .brand { font-size: 36px; }
@@ -823,6 +911,38 @@
                         <div class="stat-card">
                             <div class="stat-value" id="statTotal" style="color: var(--text-secondary)">--</div>
                             <div class="stat-label">Total Trades</div>
+                        </div>
+                    </div>
+
+                    <!-- Market Session Tracker -->
+                    <div class="session-tracker">
+                        <div class="session-header">
+                            <span class="session-title">Market Sessions</span>
+                            <span class="market-status" id="marketStatus">Loading...</span>
+                        </div>
+                        <div id="countdownSection" class="countdown-section" style="display:none;">
+                            <div class="countdown-label">Next market opens in</div>
+                            <div class="countdown-timer" id="countdownTimer">--:--:--:--</div>
+                        </div>
+                        <div class="sessions-list" id="sessionsList">
+                            <div class="session-item" id="asiaSession">
+                                <span class="session-flag">&#x1F1EF;&#x1F1F5;</span>
+                                <div class="session-name">Asia Session</div>
+                                <div class="session-time">01:00 - 09:00</div>
+                                <div class="session-status" id="asiaStatus">Closed</div>
+                            </div>
+                            <div class="session-item" id="londonSession">
+                                <span class="session-flag">&#x1F1EC;&#x1F1E7;</span>
+                                <div class="session-name">London Session</div>
+                                <div class="session-time">08:00 - 17:00</div>
+                                <div class="session-status" id="londonStatus">Closed</div>
+                            </div>
+                            <div class="session-item" id="nySession">
+                                <span class="session-flag">&#x1F1FA;&#x1F1F8;</span>
+                                <div class="session-name">New York Session</div>
+                                <div class="session-time">13:00 - 22:00</div>
+                                <div class="session-status" id="nyStatus">Closed</div>
+                            </div>
                         </div>
                     </div>
 
@@ -1216,6 +1336,85 @@
                 document.getElementById('settingAccount').textContent = session.account || '--';
                 document.getElementById('settingServer').textContent = session.server || '--';
                 document.getElementById('settingEmail').textContent = session.email || '--';
+            }
+
+            updateMarketSessions();
+            setInterval(updateMarketSessions, 1000);
+        }
+
+        function updateMarketSessions() {
+            const now = new Date();
+            const utcHour = now.getUTCHours();
+            const utcMin = now.getUTCMinutes();
+            const currentMinutes = utcHour * 60 + utcMin;
+
+            const sessions = [
+                { id: 'asia', start: 60, end: 540 },
+                { id: 'london', start: 480, end: 1020 },
+                { id: 'ny', start: 780, end: 1320 }
+            ];
+
+            const activeSessionIds = [];
+
+            sessions.forEach(s => {
+                const el = document.getElementById(s.id + 'Session');
+                const statusEl = document.getElementById(s.id + 'Status');
+                const isOpen = currentMinutes >= s.start && currentMinutes < s.end;
+
+                el.classList.remove('active');
+                statusEl.className = 'session-status ' + (isOpen ? 'open' : 'closed');
+                statusEl.textContent = isOpen ? 'Open' : 'Closed';
+
+                if (isOpen) {
+                    el.classList.add('active');
+                    activeSessionIds.push(s.id);
+                }
+            });
+
+            const statusEl = document.getElementById('marketStatus');
+            const countdownSection = document.getElementById('countdownSection');
+
+            if (activeSessionIds.length > 0) {
+                statusEl.textContent = 'MARKET OPEN';
+                statusEl.className = 'market-status open';
+                countdownSection.style.display = 'none';
+
+                const sessionNames = { asia: 'Asia', london: 'London', ny: 'New York' };
+                activeSessionIds.forEach(id => {
+                    const el = document.getElementById(id + 'Session');
+                    el.classList.add('active');
+                    const statusEl = document.getElementById(id + 'Status');
+                    statusEl.className = 'session-status open';
+                    statusEl.textContent = 'TRADING';
+                });
+            } else {
+                statusEl.textContent = 'MARKET CLOSED';
+                statusEl.className = 'market-status closed';
+                countdownSection.style.display = 'block';
+
+                let nextSession = null;
+                let minDiff = Infinity;
+
+                sessions.forEach(s => {
+                    let diff;
+                    if (currentMinutes < s.start) {
+                        diff = s.start - currentMinutes;
+                    } else {
+                        diff = (1440 - currentMinutes) + s.start;
+                    }
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        nextSession = s;
+                    }
+                });
+
+                if (nextSession) {
+                    const hours = Math.floor(minDiff / 60);
+                    const mins = minDiff % 60;
+                    const secs = 59 - utcMin % 60;
+                    document.getElementById('countdownTimer').textContent =
+                        `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                }
             }
         }
 
