@@ -2342,28 +2342,17 @@
                 document.getElementById('accountBalance').textContent = `R${newBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 document.getElementById('totalProfit').textContent = `${(data.totalMoney || 0) >= 0 ? '+' : ''}R${Math.abs(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             } catch {
-                // Demo data if backend not running
-                allTrades = generateDemoTrades();
-                const wins = allTrades.filter(t => t.pips > 0).length;
-                const losses = allTrades.filter(t => t.pips <= 0).length;
-                const totalPips = allTrades.reduce((s, t) => s + t.pips, 0);
-                const totalMoney = allTrades.reduce((s, t) => s + t.moneyMade, 0);
-                updateJournalSummary({
-                    totalMoney,
-                    totalPips,
-                    wins,
-                    losses
-                });
+                // No backend — show clean slate with R300 deposit only
+                allTrades = [];
+                updateJournalSummary({ totalMoney: 0, totalPips: 0, wins: 0, losses: 0 });
                 renderJournal();
                 renderTrades();
 
-                // Update balances from demo data
-                const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0) || 300;
-                const newBalance = totalDeposited + totalMoney;
-                document.getElementById('accountBalance').textContent = `R${newBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                document.getElementById('totalProfit').textContent = `${totalMoney >= 0 ? '+' : ''}R${Math.abs(totalMoney).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0) || INITIAL_DEPOSIT;
+                document.getElementById('accountBalance').textContent = `R${totalDeposited.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('totalProfit').textContent = 'R0.00';
                 if (document.getElementById('statOpen')) {
-                    document.getElementById('statOpen').textContent = Math.floor(Math.random() * 2);
+                    document.getElementById('statOpen').textContent = '0';
                 }
             }
         }
@@ -2421,69 +2410,7 @@
             }).join('');
         }
 
-        function generateDemoTrades() {
-            const symbols = ['NAS100', 'US30', 'XAUUSD'];
-            const types = ['BUY', 'SELL'];
-            const reasons = ['Take Profit Hit', 'Stop Loss Hit', 'Breakeven', 'Trailing Stop'];
-            const conditions = [
-                [
-                    { name: 'Impulsive', fulfilled: true },
-                    { name: 'FVG Present', fulfilled: true },
-                    { name: 'HTF Trend', fulfilled: true },
-                    { name: 'Volume Spike', fulfilled: false }
-                ],
-                [
-                    { name: 'Impulsive', fulfilled: true },
-                    { name: 'FVG Present', fulfilled: true },
-                    { name: 'HTF Trend', fulfilled: false },
-                    { name: 'Volume Spike', fulfilled: true }
-                ],
-                [
-                    { name: 'Impulsive', fulfilled: false },
-                    { name: 'FVG Present', fulfilled: true },
-                    { name: 'HTF Trend', fulfilled: true },
-                    { name: 'Volume Spike', fulfilled: false }
-                ]
-            ];
-            const learnings = [
-                'Waited for confirmation after zone touch',
-                'Sweep + CHoSD gave clean entry on M5',
-                'Entry at 61.8% fib within IFVG worked perfectly',
-                'Should have moved to breakeven sooner',
-                'Good RR on this one, let it run',
-                'Closed early, market structure shifted'
-            ];
 
-            const trades = [];
-            const now = Date.now();
-            const pipRange = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-            for (let i = 0; i < 20; i++) {
-                const isWin = Math.random() > 0.35;
-                const pips = isWin ? pipRange(15, 120) : pipRange(-5, -45);
-                const entryPrice = 1.05000 + Math.random() * 0.50000;
-                const exitPrice = isWin
-                    ? entryPrice + (pips * 0.0001 * (Math.random() > 0.5 ? 1 : -1))
-                    : entryPrice + (pips * 0.0001 * (Math.random() > 0.5 ? 1 : -1));
-
-                trades.push({
-                    entryTime: new Date(now - (i * 86400000 * (0.5 + Math.random()))).toISOString(),
-                    exitTime: new Date(now - (i * 86400000 * (0.5 + Math.random())) + 3600000).toISOString(),
-                    symbol: pick(symbols),
-                    type: pick(types),
-                    entryPrice: Math.round(entryPrice * 100000) / 100000,
-                    exitPrice: Math.round(exitPrice * 100000) / 100000,
-                    pips: pips,
-                    moneyMade: isWin ? pipRange(10, 250) : -pipRange(5, 80),
-                    conditions: pick(conditions),
-                    resultReason: isWin ? 'Take Profit Hit' : 'Stop Loss Hit',
-                    learning: Math.random() > 0.5 ? pick(learnings) : ''
-                });
-            }
-
-            return trades.sort((a, b) => new Date(b.entryTime) - new Date(a.entryTime));
-        }
 
         function updateJournalSummary(data) {
             const pipsEl = document.getElementById('journalPips');
