@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: big-dogs-fx-backend
+    runtime: node
+    repo: https://github.com/TysonCoding-Sudo/The-Big-Dogs-FX
+    branch: master
+    rootDir: backend
+    healthCheckPath: /api/auth/trading-mode
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false

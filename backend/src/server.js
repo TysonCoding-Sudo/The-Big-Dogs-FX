@@ -25,6 +25,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/trades', tradeRoutes);
 app.use('/api/deposits', depositRoutes);
 
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', app: 'THE BIG DOGS FX', version: '1.1.0' });
+});
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   

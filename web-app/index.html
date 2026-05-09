@@ -1932,7 +1932,15 @@
         })();
 
         // ===== APP STATE =====
-        const API_URL = 'http://localhost:5000/api';
+        const API_URL = (() => {
+            const isProd = window.location.hostname.includes('github.io')
+                || window.location.hostname !== 'localhost'
+                && window.location.hostname !== '127.0.0.1';
+            return isProd
+                ? 'https://big-dogs-fx-backend.onrender.com/api'
+                : 'http://localhost:5000/api';
+        })();
+        const WS_URL = API_URL.replace('/api', '').replace('https', 'wss').replace('http', 'ws');
         let token = localStorage.getItem('userToken');
         let session = JSON.parse(localStorage.getItem('bdSession') || 'null');
         let generatedOTP = '';
