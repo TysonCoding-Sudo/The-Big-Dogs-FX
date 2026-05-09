@@ -7,6 +7,7 @@ require('dotenv').config();
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const tradeRoutes = require('./routes/trades');
+const depositRoutes = require('./routes/deposits');
 const mt5Bridge = require('./services/mt5Bridge');
 
 const app = express();
@@ -22,6 +23,7 @@ connectDB();
 
 app.use('/api/auth', authRoutes);
 app.use('/api/trades', tradeRoutes);
+app.use('/api/deposits', depositRoutes);
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);

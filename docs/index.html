@@ -864,6 +864,129 @@
         .condition-tag.fulfilled { background: rgba(0,200,83,0.1); border-color: rgba(0,200,83,0.3); color: var(--success); }
         .condition-tag.failed { background: rgba(255,23,68,0.1); border-color: rgba(255,23,68,0.3); color: var(--danger); }
 
+        /* Account Summary */
+        .account-summary {
+            background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,215,0,0.02));
+            border: 1px solid rgba(255,215,0,0.2);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .account-balance {
+            text-align: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,215,0,0.15);
+        }
+        .balance-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .balance-value {
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--success);
+            text-shadow: 0 0 20px rgba(0,200,83,0.3);
+        }
+        .deposit-info {
+            display: flex;
+            justify-content: space-around;
+        }
+        .deposit-total, .profit-total {
+            text-align: center;
+        }
+        .deposit-label, .profit-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 4px;
+        }
+        .deposit-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .profit-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        /* Deposits Section */
+        .deposits-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .deposits-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .deposits-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .deposits-note {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .deposits-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .deposit-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg-input);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        .deposit-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(0,200,83,0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .deposit-details { flex: 1; margin-left: 12px; }
+        .deposit-date { font-size: 12px; color: var(--text-muted); }
+        .deposit-method { font-size: 14px; font-weight: 600; }
+        .deposit-amount {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--success);
+        }
+
+        .journal-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0 16px;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .journal-divider::before, .journal-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
         .trade-journal-result {
             display: flex;
             align-items: center;
@@ -1253,12 +1376,41 @@
 
                 <!-- JOURNAL TAB -->
                 <div id="journalTab" class="tab-content">
-                    <!-- Journal Summary Header -->
-                    <div class="journal-summary">
-                        <div class="journal-money">
-                            <div class="money-label">Total Money Made</div>
-                            <div class="money-value" id="journalMoney">R0.00</div>
+                    <!-- Account Summary Header -->
+                    <div class="account-summary">
+                        <div class="account-balance">
+                            <div class="balance-label">Current Balance</div>
+                            <div class="balance-value" id="accountBalance">R300.00</div>
                         </div>
+                        <div class="deposit-info">
+                            <div class="deposit-total">
+                                <span class="deposit-label">Deposited:</span>
+                                <span class="deposit-value" id="totalDeposited">R300.00</span>
+                            </div>
+                            <div class="profit-total">
+                                <span class="profit-label">Profit:</span>
+                                <span class="profit-value" id="totalProfit">R0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deposits History -->
+                    <div class="deposits-section">
+                        <div class="deposits-header">
+                            <span class="deposits-title">&#x1F4B3; Deposit History</span>
+                            <span class="deposits-note">Last 7 days</span>
+                        </div>
+                        <div id="depositsList" class="deposits-list">
+                            <!-- Deposit cards will be injected here -->
+                        </div>
+                    </div>
+
+                    <div class="journal-divider">
+                        <span>&#x1F4C8; Trading Journal</span>
+                    </div>
+
+                    <!-- Journal Summary -->
+                    <div class="journal-summary">
                         <div class="journal-pips">
                             <div class="pips-label">Total Pips</div>
                             <div class="pips-value" id="journalPips">+0</div>
@@ -1655,6 +1807,76 @@
             setInterval(updateMarketSessions, 1000);
 
             loadJournal();
+            loadDeposits();
+        }
+
+        // ===== DEPOSITS =====
+        let deposits = [];
+        const INITIAL_DEPOSIT = 300;
+
+        async function loadDeposits() {
+            try {
+                const response = await fetch(API_URL + '/deposits/recent');
+                const data = await response.json();
+                deposits = data.deposits || [];
+                updateAccountSummary(deposits);
+                renderDeposits();
+            } catch {
+                // Demo deposit (yesterday)
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                deposits = [{
+                    amount: 300,
+                    method: 'bank_transfer',
+                    createdAt: yesterday.toISOString(),
+                    note: 'Initial deposit'
+                }];
+                updateAccountSummary(deposits);
+                renderDeposits();
+            }
+        }
+
+        function updateAccountSummary(depositList) {
+            const totalDeposited = depositList.reduce((sum, d) => sum + d.amount, 0) || INITIAL_DEPOSIT;
+            document.getElementById('totalDeposited').textContent = `R${totalDeposited.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('accountBalance').textContent = `R${totalDeposited.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('totalProfit').textContent = 'R0.00';
+        }
+
+        function renderDeposits() {
+            const container = document.getElementById('depositsList');
+
+            if (deposits.length === 0) {
+                container.innerHTML = `
+                    <div class="deposit-item">
+                        <div class="deposit-icon">&#x1F4B3;</div>
+                        <div class="deposit-details">
+                            <div class="deposit-date">Today</div>
+                            <div class="deposit-method">Initial Deposit</div>
+                        </div>
+                        <div class="deposit-amount">+R300.00</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = deposits.map(d => {
+                const date = new Date(d.createdAt);
+                const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const methodNames = { bank_transfer: 'Bank Transfer', card: 'Card', crypto: 'Crypto', other: 'Other' };
+
+                return `
+                    <div class="deposit-item">
+                        <div class="deposit-icon">&#x1F4B3;</div>
+                        <div class="deposit-details">
+                            <div class="deposit-date">${dateStr} ${timeStr}</div>
+                            <div class="deposit-method">${methodNames[d.method] || 'Deposit'}</div>
+                        </div>
+                        <div class="deposit-amount">+R${d.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                `;
+            }).join('');
         }
 
         // ===== JOURNAL =====
@@ -1668,57 +1890,31 @@
                 allTrades = data.trades || [];
                 updateJournalSummary(data);
                 renderJournal();
+
+                // Update account balance with profit
+                const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0) || INITIAL_DEPOSIT;
+                const newBalance = totalDeposited + (data.totalMoney || 0);
+                document.getElementById('accountBalance').textContent = `R${newBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('totalProfit').textContent = `${(data.totalMoney || 0) >= 0 ? '+' : ''}R${Math.abs(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             } catch {
                 // Demo data if backend not running
                 allTrades = generateDemoTrades();
                 updateJournalSummary({
-                    totalMoney: 2450,
-                    totalPips: 847,
-                    mode: 'aggressive',
-                    wins: 12,
-                    losses: 4
+                    totalMoney: 0,
+                    totalPips: 0,
+                    mode: 'normal',
+                    wins: 0,
+                    losses: 0
                 });
                 renderJournal();
             }
         }
 
         function generateDemoTrades() {
-            const now = new Date();
-            const trades = [];
-            const symbols = ['US30', 'NAS100', 'XAUUSD', 'USOIL'];
-            const conditions = [
-                { name: 'Impulsive', fulfilled: true },
-                { name: 'FVG Present', fulfilled: true },
-                { name: 'HTF Bull', fulfilled: true },
-                { name: 'Volume Spike', fulfilled: true }
-            ];
-
-            for (let i = 0; i < 8; i++) {
-                const isWin = Math.random() > 0.25;
-                const pips = isWin ? Math.floor(Math.random() * 50) + 10 : -(Math.floor(Math.random() * 20) + 5);
-                const date = new Date(now);
-                date.setDate(date.getDate() - Math.floor(Math.random() * 7));
-
-                trades.push({
-                    entryTime: date.toISOString(),
-                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
-                    type: Math.random() > 0.5 ? 'BUY' : 'SELL',
-                    entryPrice: 38000 + Math.random() * 500,
-                    exitPrice: 38000 + Math.random() * 500,
-                    pips: pips,
-                    moneyMade: pips * 25,
-                    conditions: conditions,
-                    resultReason: isWin ? 'TP Hit' : 'SL Hit',
-                    learning: isWin ? 'Trend aligned, volume confirmed' : 'No confluence, ranged market'
-                });
-            }
-            return trades;
+            return [];
         }
 
         function updateJournalSummary(data) {
-            document.getElementById('journalMoney').textContent = `R${(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            document.getElementById('journalMoney').style.color = data.totalMoney >= 0 ? 'var(--success)' : 'var(--danger)';
-
             const pipsEl = document.getElementById('journalPips');
             pipsEl.textContent = `${data.totalPips >= 0 ? '+' : ''}${data.totalPips || 0}`;
             pipsEl.style.color = data.totalPips >= 0 ? 'var(--primary)' : 'var(--danger)';
@@ -1735,7 +1931,7 @@
             document.getElementById('statWinRate').textContent = data.wins + data.losses > 0
                 ? `${Math.round(data.wins / (data.wins + data.losses) * 100)}%`
                 : '0%';
-            document.getElementById('statPnl').textContent = `R${(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('statPnl').textContent = `${(data.totalMoney || 0) >= 0 ? '+' : ''}R${Math.abs(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             document.getElementById('statPnl').style.color = data.totalMoney >= 0 ? 'var(--success)' : 'var(--danger)';
         }
 
