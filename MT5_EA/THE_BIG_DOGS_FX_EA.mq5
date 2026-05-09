@@ -38,6 +38,7 @@ input int    LondonStartHour    = 7;        // London session start (broker time
 input int    LondonEndHour      = 17;       // London session end (broker time)
 input int    NYStartHour        = 13;       // NY session start (broker time)
 input int    NYEndHour          = 22;       // NY session end (broker time)
+input int    SpreadGraceMinutes = 30;       // No trades first N min of each session
 
 input group "=== TRADE FILTERS ==="
 input int    MaxSpreadPoints    = 300;      // Max spread allowed (in points)
@@ -139,22 +140,23 @@ void OnTick() {
       
       ManageOpenTrades();
       
-      if(IsWithinSession() && IsSpreadOK() &&
-         CountOpenTrades() < MathMin(MaxOpenTrades, AggressiveMaxTrades)) {
-         CheckAggressiveEntries();
-      }
-   } else {
-      // === NORMAL MODE LOGIC (H1) ===
-      if(currentBarTime != lastBarTime) {
-         lastBarTime = currentBarTime;
-         ScanForZones();
-      }
-      
-      ManageOpenTrades();
-      
-      if(IsWithinSession() && IsSpreadOK() && CountOpenTrades() < MaxOpenTrades) {
-         CheckForEntries();
-      }
+       if(IsWithinSession() && !IsSpreadHours() && IsSpreadOK() &&
+          CountOpenTrades() < MathMin(MaxOpenTrades, AggressiveMaxTrades)) {
+          CheckAggressiveEntries();
+       }
+    } else {
+       // === NORMAL MODE LOGIC (H1) ===
+       if(currentBarTime != lastBarTime) {
+          lastBarTime = currentBarTime;
+          ScanForZones();
+       }
+       
+       ManageOpenTrades();
+       
+       if(IsWithinSession() && !IsSpreadHours() && IsSpreadOK() &&
+          CountOpenTrades() < MaxOpenTrades) {
+          CheckForEntries();
+       }
    }
 }
 
@@ -174,7 +176,32 @@ bool IsWithinSession() {
    bool isLondon = (hour >= LondonStartHour && hour < LondonEndHour);
    bool isNY = (hour >= NYStartHour && hour < NYEndHour);
    
-   return (isLondon || isNY);
+    return (isLondon || isNY);
+}
+
+//+------------------------------------------------------------------+
+//| Check if we are in spread grace period (first N min of session)   |
+//+------------------------------------------------------------------+
+bool IsSpreadHours() {
+   if(SpreadGraceMinutes <= 0 || !UseSessionFilter) return false;
+
+   MqlDateTime dt;
+   TimeCurrent(dt);
+   int totalMinutes = dt.hour * 60 + dt.min;
+   int dayOfWeek = dt.day_of_week;
+
+   if(dayOfWeek == 0 || dayOfWeek == 6) return true;
+
+   int londonStart = LondonStartHour * 60;
+   int londonEnd = LondonEndHour * 60;
+   int nyStart = NYStartHour * 60;
+   int nyEnd = NYEndHour * 60;
+
+   // Check if within first SpreadGraceMinutes of any session
+   if(totalMinutes >= londonStart && totalMinutes < londonStart + SpreadGraceMinutes) return true;
+   if(totalMinutes >= nyStart && totalMinutes < nyStart + SpreadGraceMinutes) return true;
+
+   return false;
 }
 
 //+------------------------------------------------------------------+
@@ -964,8 +991,8 @@ double CalculateAggressiveLotSize(double slDistancePips) {
 //| IFVG/FVG at fib levels)                                         |
 //+------------------------------------------------------------------+
 void CheckAggressiveEntries() {
-   // Only trade during London/NY sessions
-   if(!IsWithinSession()) return;
+   // Only trade during London/NY sessions, avoid spread hours
+   if(!IsWithinSession() || IsSpreadHours()) return;
    
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
