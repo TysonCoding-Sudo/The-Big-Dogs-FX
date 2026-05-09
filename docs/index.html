@@ -562,6 +562,55 @@
             border: 1px solid var(--border);
             margin-bottom: 16px;
         }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-input);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+        .calendar-date, .calendar-time {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .cal-icon, .time-icon { font-size: 16px; }
+        #currentDate { font-weight: 700; font-size: 14px; }
+        #currentTime {
+            font-weight: 800;
+            font-size: 16px;
+            color: var(--primary);
+            font-family: monospace;
+            letter-spacing: 1px;
+        }
+        .time-zone {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: rgba(255, 215, 0, 0.15);
+            border-radius: 4px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .weekend-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px;
+            background: rgba(255, 23, 68, 0.15);
+            border: 1px solid rgba(255, 23, 68, 0.3);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            color: var(--danger);
+            font-weight: 800;
+            font-size: 14px;
+        }
+        .weekend-icon { font-size: 18px; }
+
         .session-header {
             display: flex;
             justify-content: space-between;
@@ -929,6 +978,21 @@
 
                     <!-- Market Session Tracker -->
                     <div class="session-tracker">
+                        <div class="calendar-header">
+                            <div class="calendar-date">
+                                <span class="cal-icon">&#x1F4C5;</span>
+                                <span id="currentDate">Loading...</span>
+                            </div>
+                            <div class="calendar-time">
+                                <span class="time-icon">&#x1F551;</span>
+                                <span id="currentTime">--:--:--</span>
+                                <span class="time-zone">UTC+2</span>
+                            </div>
+                        </div>
+                        <div id="weekendBanner" class="weekend-banner" style="display:none;">
+                            <span class="weekend-icon">&#x26A0;</span>
+                            Market Closed - Weekend
+                        </div>
                         <div class="session-header">
                             <span class="session-title">Market Sessions</span>
                             <span class="market-status" id="marketStatus">Loading...</span>
@@ -941,19 +1005,19 @@
                             <div class="session-item" id="asiaSession">
                                 <span class="session-flag">&#x1F1EF;&#x1F1F5;</span>
                                 <div class="session-name">Asia Session</div>
-                                <div class="session-time">01:00 - 09:00</div>
+                                <div class="session-time">03:00 - 11:00</div>
                                 <div class="session-status" id="asiaStatus">Closed</div>
                             </div>
                             <div class="session-item" id="londonSession">
                                 <span class="session-flag">&#x1F1EC;&#x1F1E7;</span>
                                 <div class="session-name">London Session</div>
-                                <div class="session-time">08:00 - 17:00</div>
+                                <div class="session-time">10:00 - 19:00</div>
                                 <div class="session-status" id="londonStatus">Closed</div>
                             </div>
                             <div class="session-item" id="nySession">
                                 <span class="session-flag">&#x1F1FA;&#x1F1F8;</span>
                                 <div class="session-name">New York Session</div>
-                                <div class="session-time">13:00 - 22:00</div>
+                                <div class="session-time">15:00 - 00:00</div>
                                 <div class="session-status" id="nyStatus">Closed</div>
                             </div>
                         </div>
@@ -1360,48 +1424,101 @@
             setInterval(updateMarketSessions, 1000);
         }
 
+        const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
         function updateMarketSessions() {
             const now = new Date();
             const utcHour = now.getUTCHours();
             const utcMin = now.getUTCMinutes();
-            const currentMinutes = utcHour * 60 + utcMin;
+            const utcSec = now.getUTCSeconds();
+            const utcDay = now.getUTCDay();
+
+            // Convert to UTC+2
+            let localHour = utcHour + 2;
+            let localDay = utcDay;
+            if (localHour >= 24) {
+                localHour -= 24;
+                localDay = (localDay + 1) % 7;
+            }
+
+            const localMinutes = localHour * 60 + utcMin;
+
+            // Update calendar display
+            const dateEl = document.getElementById('currentDate');
+            const timeEl = document.getElementById('currentTime');
+
+            const dayName = DAYS[localDay];
+            const date = now.getUTCDate();
+            const month = MONTHS[now.getUTCMonth()];
+            const year = now.getUTCFullYear();
+
+            dateEl.textContent = `${dayName}, ${date} ${month} ${year}`;
+
+            timeEl.textContent = `${String(localHour).padStart(2, '0')}:${String(utcMin).padStart(2, '0')}:${String(utcSec).padStart(2, '0')}`;
+
+            // Check weekend (Friday 23:00 - Sunday 23:59 UTC+2 = Friday 21:00 - Sunday 21:00 UTC)
+            const weekendBanner = document.getElementById('weekendBanner');
+            const isWeekend = (localDay === 0 || localDay === 6) || (localDay === 5 && localHour >= 23);
+
+            // Session times in UTC+2
+            // Asia: 01:00-09:00 UTC+2 = 23:00-07:00 UTC (previous day to morning)
+            // London: 08:00-17:00 UTC+2 = 06:00-15:00 UTC
+            // NY: 13:00-22:00 UTC+2 = 11:00-20:00 UTC
 
             const sessions = [
-                { id: 'asia', start: 60, end: 540 },
-                { id: 'london', start: 480, end: 1020 },
-                { id: 'ny', start: 780, end: 1320 }
+                { id: 'asia', start: 180, end: 540 },   // 03:00 - 11:00 UTC+2
+                { id: 'london', start: 600, end: 1140 }, // 10:00 - 19:00 UTC+2
+                { id: 'ny', start: 900, end: 1440 }       // 15:00 - 00:00 UTC+2
             ];
 
             const activeSessionIds = [];
 
-            sessions.forEach(s => {
-                const el = document.getElementById(s.id + 'Session');
-                const statusEl = document.getElementById(s.id + 'Status');
-                const isOpen = currentMinutes >= s.start && currentMinutes < s.end;
+            // Show/hide weekend banner
+            if (isWeekend) {
+                weekendBanner.style.display = 'flex';
+                sessions.forEach(s => {
+                    const el = document.getElementById(s.id + 'Session');
+                    const statusEl = document.getElementById(s.id + 'Status');
+                    el.classList.remove('active');
+                    statusEl.className = 'session-status closed';
+                    statusEl.textContent = 'Weekend';
+                });
+            } else {
+                weekendBanner.style.display = 'none';
 
-                el.classList.remove('active');
-                statusEl.className = 'session-status ' + (isOpen ? 'open' : 'closed');
-                statusEl.textContent = isOpen ? 'Open' : 'Closed';
+                sessions.forEach(s => {
+                    const el = document.getElementById(s.id + 'Session');
+                    const statusEl = document.getElementById(s.id + 'Status');
+                    const isOpen = localMinutes >= s.start && localMinutes < s.end;
 
-                if (isOpen) {
-                    el.classList.add('active');
-                    activeSessionIds.push(s.id);
-                }
-            });
+                    el.classList.remove('active');
+                    statusEl.className = 'session-status ' + (isOpen ? 'open' : 'closed');
+                    statusEl.textContent = isOpen ? 'Open' : 'Closed';
+
+                    if (isOpen) {
+                        el.classList.add('active');
+                        activeSessionIds.push(s.id);
+                    }
+                });
+            }
 
             const statusEl = document.getElementById('marketStatus');
             const countdownSection = document.getElementById('countdownSection');
 
-            if (activeSessionIds.length > 0) {
+            if (isWeekend) {
+                statusEl.textContent = 'MARKET CLOSED';
+                statusEl.className = 'market-status closed';
+                countdownSection.style.display = 'none';
+            } else if (activeSessionIds.length > 0) {
                 statusEl.textContent = 'MARKET OPEN';
                 statusEl.className = 'market-status open';
                 countdownSection.style.display = 'none';
 
-                const sessionNames = { asia: 'Asia', london: 'London', ny: 'New York' };
                 activeSessionIds.forEach(id => {
                     const el = document.getElementById(id + 'Session');
-                    el.classList.add('active');
                     const statusEl = document.getElementById(id + 'Status');
+                    el.classList.add('active');
                     statusEl.className = 'session-status open';
                     statusEl.textContent = 'TRADING';
                 });
@@ -1415,10 +1532,12 @@
 
                 sessions.forEach(s => {
                     let diff;
-                    if (currentMinutes < s.start) {
-                        diff = s.start - currentMinutes;
+                    if (localMinutes < s.start) {
+                        diff = s.start - localMinutes;
+                    } else if (localMinutes >= s.end) {
+                        diff = (1440 - localMinutes) + s.start;
                     } else {
-                        diff = (1440 - currentMinutes) + s.start;
+                        diff = Infinity;
                     }
                     if (diff < minDiff) {
                         minDiff = diff;
@@ -1429,14 +1548,14 @@
                 if (nextSession) {
                     const hours = Math.floor(minDiff / 60);
                     const mins = minDiff % 60;
-                    const secs = 59 - utcMin % 60;
+                    const secs = (60 - utcSec) % 60;
                     document.getElementById('countdownTimer').textContent =
                         `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
                 }
             }
         }
 
-        function handleLogout() {
+        function switchTab(tabName) {
             token = null;
             session = null;
             localStorage.removeItem('userToken');
