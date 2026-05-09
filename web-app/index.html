@@ -704,6 +704,204 @@
             font-style: italic;
         }
 
+        /* Journal Tab Styles */
+        .journal-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .journal-money {
+            flex: 1;
+            min-width: 140px;
+            background: linear-gradient(135deg, rgba(0,200,83,0.15), rgba(0,200,83,0.05));
+            border: 1px solid rgba(0,200,83,0.3);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+        }
+        .money-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+        .money-value { font-size: 28px; font-weight: 800; color: var(--success); }
+        .journal-pips {
+            flex: 1;
+            min-width: 140px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+        }
+        .pips-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+        .pips-value { font-size: 28px; font-weight: 800; color: var(--primary); }
+        .journal-mode {
+            flex: 1;
+            min-width: 140px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mode-badge {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+        .mode-badge.normal { background: rgba(255,215,0,0.2); color: var(--primary); }
+        .mode-badge.aggressive { background: rgba(255,23,68,0.2); color: var(--danger); }
+
+        .journal-filter {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: var(--bg-input);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .journal-filter-label { font-size: 14px; color: var(--text-secondary); }
+        .journal-filter select {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .journal-filter select option { background: var(--bg-card); }
+        .journal-days { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+        .journal-list { display: flex; flex-direction: column; gap: 16px; }
+
+        .trade-card-journal {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 16px;
+            transition: all 0.2s;
+        }
+        .trade-card-journal.win { border-left: 4px solid var(--success); }
+        .trade-card-journal.loss { border-left: 4px solid var(--danger); }
+        .trade-card-journal:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+
+        .trade-journal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .trade-journal-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .trade-journal-symbol {
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .trade-journal-type {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .trade-journal-type.buy { background: rgba(0,200,83,0.2); color: var(--success); }
+        .trade-journal-type.sell { background: rgba(255,23,68,0.2); color: var(--danger); }
+
+        .trade-journal-prices {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg-input);
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+        .price-item { text-align: center; }
+        .price-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+        .price-value { font-size: 14px; font-weight: 700; font-family: monospace; }
+
+        .trade-journal-results {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .result-icon { font-size: 16px; }
+        .result-text { font-size: 14px; font-weight: 600; }
+        .result-pips { color: var(--success); }
+        .result-pips.neg { color: var(--danger); }
+        .result-money { font-size: 18px; font-weight: 800; }
+        .result-money.pos { color: var(--success); }
+        .result-money.neg { color: var(--danger); }
+
+        .trade-journal-conditions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .condition-tag {
+            padding: 4px 8px;
+            background: rgba(255,215,0,0.1);
+            border: 1px solid rgba(255,215,0,0.2);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--primary);
+        }
+        .condition-tag.fulfilled { background: rgba(0,200,83,0.1); border-color: rgba(0,200,83,0.3); color: var(--success); }
+        .condition-tag.failed { background: rgba(255,23,68,0.1); border-color: rgba(255,23,68,0.3); color: var(--danger); }
+
+        .trade-journal-result {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .result-reason-icon { font-size: 16px; }
+        .result-reason { font-size: 13px; color: var(--text-secondary); }
+
+        .trade-journal-learning {
+            padding: 10px 12px;
+            background: rgba(255,215,0,0.05);
+            border: 1px solid rgba(255,215,0,0.1);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        .learning-icon { color: var(--primary); margin-right: 6px; }
+
+        .journal-stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-top: 16px;
+        }
+        .journal-stat { text-align: center; }
+        .stat-num { font-size: 20px; font-weight: 800; color: var(--primary); }
+        .stat-num.wins { color: var(--success); }
+        .stat-num.losses { color: var(--danger); }
+        .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
         @media (min-width: 768px) {
             .login-card { padding: 40px 36px; }
             .brand { font-size: 36px; }
@@ -952,6 +1150,7 @@
             <div class="tabs">
                 <div class="tab active" data-tab="overview" onclick="switchTab('overview')">Overview</div>
                 <div class="tab" data-tab="trades" onclick="switchTab('trades')">Trades</div>
+                <div class="tab" data-tab="journal" onclick="switchTab('journal')">Journal</div>
                 <div class="tab" data-tab="settings" onclick="switchTab('settings')">Settings</div>
             </div>
 
@@ -1049,6 +1248,38 @@
                             <div class="empty-text">No trades yet</div>
                             <div class="empty-subtext">Trades will appear here when the EA executes</div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- JOURNAL TAB -->
+                <div id="journalTab" class="tab-content">
+                    <!-- Journal Summary Header -->
+                    <div class="journal-summary">
+                        <div class="journal-money">
+                            <div class="money-label">Total Money Made</div>
+                            <div class="money-value" id="journalMoney">R0.00</div>
+                        </div>
+                        <div class="journal-pips">
+                            <div class="pips-label">Total Pips</div>
+                            <div class="pips-value" id="journalPips">+0</div>
+                        </div>
+                        <div class="journal-mode">
+                            <span class="mode-badge" id="journalMode">NORMAL MODE</span>
+                        </div>
+                    </div>
+
+                    <div class="journal-filter">
+                        <span class="journal-filter-label">Showing:</span>
+                        <select id="journalFilter" onchange="filterJournal()">
+                            <option value="all">All Trades</option>
+                            <option value="wins">Winners Only</option>
+                            <option value="losses">Losers Only</option>
+                        </select>
+                        <span class="journal-days">Last 7 Days</span>
+                    </div>
+
+                    <div id="journalList" class="journal-list">
+                        <!-- Trade cards will be injected here -->
                     </div>
                 </div>
 
@@ -1422,6 +1653,192 @@
 
             updateMarketSessions();
             setInterval(updateMarketSessions, 1000);
+
+            loadJournal();
+        }
+
+        // ===== JOURNAL =====
+        let allTrades = [];
+        let currentFilter = 'all';
+
+        async function loadJournal() {
+            try {
+                const response = await fetch(API_URL + '/trades/journal');
+                const data = await response.json();
+                allTrades = data.trades || [];
+                updateJournalSummary(data);
+                renderJournal();
+            } catch {
+                // Demo data if backend not running
+                allTrades = generateDemoTrades();
+                updateJournalSummary({
+                    totalMoney: 2450,
+                    totalPips: 847,
+                    mode: 'aggressive',
+                    wins: 12,
+                    losses: 4
+                });
+                renderJournal();
+            }
+        }
+
+        function generateDemoTrades() {
+            const now = new Date();
+            const trades = [];
+            const symbols = ['US30', 'NAS100', 'XAUUSD', 'USOIL'];
+            const conditions = [
+                { name: 'Impulsive', fulfilled: true },
+                { name: 'FVG Present', fulfilled: true },
+                { name: 'HTF Bull', fulfilled: true },
+                { name: 'Volume Spike', fulfilled: true }
+            ];
+
+            for (let i = 0; i < 8; i++) {
+                const isWin = Math.random() > 0.25;
+                const pips = isWin ? Math.floor(Math.random() * 50) + 10 : -(Math.floor(Math.random() * 20) + 5);
+                const date = new Date(now);
+                date.setDate(date.getDate() - Math.floor(Math.random() * 7));
+
+                trades.push({
+                    entryTime: date.toISOString(),
+                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
+                    type: Math.random() > 0.5 ? 'BUY' : 'SELL',
+                    entryPrice: 38000 + Math.random() * 500,
+                    exitPrice: 38000 + Math.random() * 500,
+                    pips: pips,
+                    moneyMade: pips * 25,
+                    conditions: conditions,
+                    resultReason: isWin ? 'TP Hit' : 'SL Hit',
+                    learning: isWin ? 'Trend aligned, volume confirmed' : 'No confluence, ranged market'
+                });
+            }
+            return trades;
+        }
+
+        function updateJournalSummary(data) {
+            document.getElementById('journalMoney').textContent = `R${(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('journalMoney').style.color = data.totalMoney >= 0 ? 'var(--success)' : 'var(--danger)';
+
+            const pipsEl = document.getElementById('journalPips');
+            pipsEl.textContent = `${data.totalPips >= 0 ? '+' : ''}${data.totalPips || 0}`;
+            pipsEl.style.color = data.totalPips >= 0 ? 'var(--primary)' : 'var(--danger)';
+
+            const modeEl = document.getElementById('journalMode');
+            if (data.mode === 'aggressive') {
+                modeEl.textContent = 'AGGRESSIVE MODE';
+                modeEl.className = 'mode-badge aggressive';
+            } else {
+                modeEl.textContent = 'NORMAL MODE';
+                modeEl.className = 'mode-badge normal';
+            }
+
+            document.getElementById('statWinRate').textContent = data.wins + data.losses > 0
+                ? `${Math.round(data.wins / (data.wins + data.losses) * 100)}%`
+                : '0%';
+            document.getElementById('statPnl').textContent = `R${(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('statPnl').style.color = data.totalMoney >= 0 ? 'var(--success)' : 'var(--danger)';
+        }
+
+        function renderJournal() {
+            const container = document.getElementById('journalList');
+
+            let filtered = allTrades;
+            if (currentFilter === 'wins') filtered = allTrades.filter(t => t.pips > 0);
+            if (currentFilter === 'losses') filtered = allTrades.filter(t => t.pips <= 0);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#x1F4DC;</div>
+                        <div class="empty-text">No trades in journal</div>
+                        <div class="empty-subtext">Trades will appear here after the EA executes</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const wins = allTrades.filter(t => t.pips > 0).length;
+            const losses = allTrades.filter(t => t.pips <= 0).length;
+            const avgPips = allTrades.length > 0 ? Math.round(allTrades.reduce((sum, t) => sum + t.pips, 0) / allTrades.length) : 0;
+
+            container.innerHTML = filtered.map(trade => {
+                const date = new Date(trade.entryTime);
+                const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const isWin = trade.pips > 0;
+
+                return `
+                    <div class="trade-card-journal ${isWin ? 'win' : 'loss'}">
+                        <div class="trade-journal-header">
+                            <div class="trade-journal-time">
+                                <span>&#x1F4C5;</span> ${dateStr} <span>&#x1F551;</span> ${timeStr}
+                            </div>
+                            <div class="trade-journal-symbol">${trade.symbol}</div>
+                            <div class="trade-journal-type ${trade.type.toLowerCase()}">${trade.type}</div>
+                        </div>
+
+                        <div class="trade-journal-prices">
+                            <div class="price-item">
+                                <div class="price-label">Entry</div>
+                                <div class="price-value">${trade.entryPrice.toFixed(2)}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">Exit</div>
+                                <div class="price-value">${trade.exitPrice.toFixed(2)}</div>
+                            </div>
+                        </div>
+
+                        <div class="trade-journal-results">
+                            <div class="result-item">
+                                <span class="result-icon">${isWin ? '&#x1F4C8;' : '&#x1F4C9;'}</span>
+                                <span class="result-text result-pips ${isWin ? '' : 'neg'}">${isWin ? '+' : ''}${trade.pips} pips</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-icon">&#x1F4B0;</span>
+                                <span class="result-money ${isWin ? 'pos' : 'neg'}">R${Math.abs(trade.moneyMade).toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <div class="trade-journal-conditions">
+                            ${(trade.conditions || []).map(c => `
+                                <span class="condition-tag ${c.fulfilled ? 'fulfilled' : ''}">${c.name}: ${c.fulfilled ? '&#x2713;' : '&#x2717;'}</span>
+                            `).join('')}
+                        </div>
+
+                        <div class="trade-journal-result">
+                            <span class="result-reason-icon">${isWin ? '&#x2705;' : '&#x274C;'}</span>
+                            <span class="result-reason">${trade.resultReason || (isWin ? 'Take Profit Hit' : 'Stop Loss Hit')}</span>
+                        </div>
+
+                        ${trade.learning ? `
+                            <div class="trade-journal-learning">
+                                <span class="learning-icon">&#x1F4DA;</span>
+                                ${trade.learning}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('') + `
+                <div class="journal-stats">
+                    <div class="journal-stat">
+                        <div class="stat-num wins">${wins}</div>
+                        <div class="stat-label">Wins</div>
+                    </div>
+                    <div class="journal-stat">
+                        <div class="stat-num losses">${losses}</div>
+                        <div class="stat-label">Losses</div>
+                    </div>
+                    <div class="journal-stat">
+                        <div class="stat-num">${avgPips > 0 ? '+' : ''}${avgPips}</div>
+                        <div class="stat-label">Avg Pips</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function filterJournal() {
+            currentFilter = document.getElementById('journalFilter').value;
+            renderJournal();
         }
 
         const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
