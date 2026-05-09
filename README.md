@@ -6,6 +6,8 @@ A professional automated trading system built for MetaTrader 5 with a cross-plat
 
 **Live Web App:** [tysoncoding-sudo.github.io/The-Big-Dogs-FX](https://tysoncoding-sudo.github.io/The-Big-Dogs-FX/)
 
+> The web app runs fully standalone on GitHub Pages with built-in demo data. No backend needed to browse the UI. Connect the backend locally for live trading data.
+
 ## Strategy
 
 Price action-based EA trading on **Indices** and **Commodities** using:
@@ -85,16 +87,11 @@ cp .env.example .env
 npm run dev
 ```
 
-### Backend (Hosted - Render)
+### Backend (Local Only)
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/TysonCoding-Sudo/The-Big-Dogs-FX)
-
-1. Click the button above
-2. Set environment variables in Render dashboard:
-   - `MONGO_URI` - Get free from [MongoDB Atlas](https://www.mongodb.com/atlas)
-   - `JWT_SECRET` - Generate a random 64-char string
-   - `EMAIL_USER` / `EMAIL_PASS` - Gmail App Password for OTP
-3. Deploy - Render will auto-detect the Node.js service
+The backend runs locally on your machine. The web app auto-detects its environment:
+- **GitHub Pages**: Runs fully standalone with demo data (trades, journal, deposits)
+- **Localhost**: Connects to `localhost:5000` for live backend data
 
 ### MongoDB Atlas (Free Database)
 

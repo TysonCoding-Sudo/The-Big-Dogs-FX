@@ -1672,14 +1672,14 @@
 
                     <div class="info-card">
                         <span class="info-icon">&#x1F4CA;</span>
-                        <div class="info-text">EA is monitoring H1 charts for supply/demand zones with FVG confluence</div>
+                        <div class="info-text" id="modeInfoText">EA is monitoring H1 charts for supply/demand zones with FVG confluence</div>
                     </div>
 
                     <div class="card">
                         <div class="card-title">Live Signals</div>
                         <div class="signal-item">
                             <div class="signal-dot"></div>
-                            <span class="signal-text">Scanning for setups...</span>
+                            <span class="signal-text" id="signalText">Scanning for setups...</span>
                         </div>
                     </div>
                 </div>
@@ -1932,15 +1932,10 @@
         })();
 
         // ===== APP STATE =====
-        const API_URL = (() => {
-            const isProd = window.location.hostname.includes('github.io')
-                || window.location.hostname !== 'localhost'
-                && window.location.hostname !== '127.0.0.1';
-            return isProd
-                ? 'https://big-dogs-fx-backend.onrender.com/api'
-                : 'http://localhost:5000/api';
-        })();
-        const WS_URL = API_URL.replace('/api', '').replace('https', 'wss').replace('http', 'ws');
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000/api'
+            : null;
+        const WS_URL = API_URL ? API_URL.replace('/api', '').replace('https', 'wss').replace('http', 'ws') : null;
         let token = localStorage.getItem('userToken');
         let session = JSON.parse(localStorage.getItem('bdSession') || 'null');
         let generatedOTP = '';
@@ -2225,13 +2220,26 @@
                     modeBadge.className = 'mode-badge normal';
                 }
             }
+
+            // Update overview info and signals
+            const infoText = document.getElementById('modeInfoText');
+            const signalText = document.getElementById('signalText');
+            if (infoText) {
+                infoText.textContent = isAgg
+                    ? 'AGGRESSIVE: EA scanning M1/M5 for liquidity sweeps + IFVG/FVG at fib levels'
+                    : 'EA is monitoring H1 charts for supply/demand zones with FVG confluence';
+            }
+            if (signalText) {
+                signalText.textContent = isAgg
+                    ? 'Aggressive mode active - waiting for sweep + CHoSD + fib confluence...'
+                    : 'Scanning for setups...';
+            }
         }
 
         async function handleModeToggle() {
             const toggle = document.getElementById('modeToggle');
             const newMode = toggle.checked ? 'aggressive' : 'normal';
-
-            // Optimistic UI update
+            currentTradingMode = newMode;
             updateModeUI(newMode);
 
             try {
@@ -2245,10 +2253,8 @@
                     headers,
                     body: JSON.stringify({ mode: newMode })
                 });
-                currentTradingMode = newMode;
             } catch {
-                // Revert on failure
-                updateModeUI(currentTradingMode);
+                // Offline mode - toggle works locally
             }
         }
 
@@ -2264,15 +2270,11 @@
                 updateAccountSummary(deposits);
                 renderDeposits();
             } catch {
-                // Demo deposit (yesterday)
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                deposits = [{
-                    amount: 300,
-                    method: 'bank_transfer',
-                    createdAt: yesterday.toISOString(),
-                    note: 'Initial deposit'
-                }];
+                // Demo deposits with history
+                deposits = [
+                    { amount: 300, method: 'bank_transfer', createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), note: 'Initial deposit' },
+                    { amount: 150, method: 'card', createdAt: new Date(Date.now() - 86400000).toISOString(), note: 'Bonus deposit' }
+                ];
                 updateAccountSummary(deposits);
                 renderDeposits();
             }
@@ -2341,19 +2343,91 @@
             } catch {
                 // Demo data if backend not running
                 allTrades = generateDemoTrades();
+                const wins = allTrades.filter(t => t.pips > 0).length;
+                const losses = allTrades.filter(t => t.pips <= 0).length;
+                const totalPips = allTrades.reduce((s, t) => s + t.pips, 0);
+                const totalMoney = allTrades.reduce((s, t) => s + t.moneyMade, 0);
                 updateJournalSummary({
-                    totalMoney: 0,
-                    totalPips: 0,
-                    mode: 'normal',
-                    wins: 0,
-                    losses: 0
+                    totalMoney,
+                    totalPips,
+                    wins,
+                    losses
                 });
                 renderJournal();
+
+                // Update balances from demo data
+                const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0) || 450;
+                const newBalance = totalDeposited + totalMoney;
+                document.getElementById('accountBalance').textContent = `R${newBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('totalProfit').textContent = `${totalMoney >= 0 ? '+' : ''}R${Math.abs(totalMoney).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                if (document.getElementById('statOpen')) {
+                    document.getElementById('statOpen').textContent = Math.floor(Math.random() * 2);
+                }
             }
         }
 
         function generateDemoTrades() {
-            return [];
+            const symbols = ['US30', 'NAS100', 'XAUUSD', 'GBPUSD', 'EURUSD'];
+            const types = ['BUY', 'SELL'];
+            const reasons = ['Take Profit Hit', 'Stop Loss Hit', 'Breakeven', 'Trailing Stop'];
+            const conditions = [
+                [
+                    { name: 'Impulsive', fulfilled: true },
+                    { name: 'FVG Present', fulfilled: true },
+                    { name: 'HTF Trend', fulfilled: true },
+                    { name: 'Volume Spike', fulfilled: false }
+                ],
+                [
+                    { name: 'Impulsive', fulfilled: true },
+                    { name: 'FVG Present', fulfilled: true },
+                    { name: 'HTF Trend', fulfilled: false },
+                    { name: 'Volume Spike', fulfilled: true }
+                ],
+                [
+                    { name: 'Impulsive', fulfilled: false },
+                    { name: 'FVG Present', fulfilled: true },
+                    { name: 'HTF Trend', fulfilled: true },
+                    { name: 'Volume Spike', fulfilled: false }
+                ]
+            ];
+            const learnings = [
+                'Waited for confirmation after zone touch',
+                'Sweep + CHoSD gave clean entry on M5',
+                'Entry at 61.8% fib within IFVG worked perfectly',
+                'Should have moved to breakeven sooner',
+                'Good RR on this one, let it run',
+                'Closed early, market structure shifted'
+            ];
+
+            const trades = [];
+            const now = Date.now();
+            const pipRange = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            for (let i = 0; i < 20; i++) {
+                const isWin = Math.random() > 0.35;
+                const pips = isWin ? pipRange(15, 120) : pipRange(-5, -45);
+                const entryPrice = 1.05000 + Math.random() * 0.50000;
+                const exitPrice = isWin
+                    ? entryPrice + (pips * 0.0001 * (Math.random() > 0.5 ? 1 : -1))
+                    : entryPrice + (pips * 0.0001 * (Math.random() > 0.5 ? 1 : -1));
+
+                trades.push({
+                    entryTime: new Date(now - (i * 86400000 * (0.5 + Math.random()))).toISOString(),
+                    exitTime: new Date(now - (i * 86400000 * (0.5 + Math.random())) + 3600000).toISOString(),
+                    symbol: pick(symbols),
+                    type: pick(types),
+                    entryPrice: Math.round(entryPrice * 100000) / 100000,
+                    exitPrice: Math.round(exitPrice * 100000) / 100000,
+                    pips: pips,
+                    moneyMade: isWin ? pipRange(10, 250) : -pipRange(5, 80),
+                    conditions: pick(conditions),
+                    resultReason: isWin ? 'Take Profit Hit' : 'Stop Loss Hit',
+                    learning: Math.random() > 0.5 ? pick(learnings) : ''
+                });
+            }
+
+            return trades.sort((a, b) => new Date(b.entryTime) - new Date(a.entryTime));
         }
 
         function updateJournalSummary(data) {
@@ -2370,11 +2444,13 @@
                 modeEl.className = 'mode-badge normal';
             }
 
-            document.getElementById('statWinRate').textContent = data.wins + data.losses > 0
-                ? `${Math.round(data.wins / (data.wins + data.losses) * 100)}%`
+            const totalTrades = (data.wins || 0) + (data.losses || 0);
+            document.getElementById('statWinRate').textContent = totalTrades > 0
+                ? `${Math.round(data.wins / totalTrades * 100)}%`
                 : '0%';
             document.getElementById('statPnl').textContent = `${(data.totalMoney || 0) >= 0 ? '+' : ''}R${Math.abs(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             document.getElementById('statPnl').style.color = data.totalMoney >= 0 ? 'var(--success)' : 'var(--danger)';
+            document.getElementById('statTotal').textContent = totalTrades;
         }
 
         function renderJournal() {
