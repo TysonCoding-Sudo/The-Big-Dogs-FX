@@ -2115,29 +2115,19 @@
 
             generatedOTP = generateOTP();
 
-            try {
-                const btn = document.getElementById('sendOtpBtn');
-                btn.disabled = true;
-                btn.textContent = 'SENDING...';
+            document.getElementById('sendOtpBtn').style.display = 'none';
+            document.getElementById('otpDisplayCode').textContent = generatedOTP;
+            document.getElementById('otpDisplayCard').style.display = 'block';
+            document.getElementById('otpRevealCode').textContent = generatedOTP;
 
+            // Try backend in background — code is already visible
+            try {
                 await fetch(API_URL + '/auth/send-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, otp: generatedOTP })
                 });
-
-                successEl.textContent = 'Verification code sent to your email!';
-                successEl.classList.add('show');
-                errorEl.classList.remove('show');
-
-                setTimeout(() => goToOtpStep(), 1200);
-            } catch {
-                // No backend — show code directly on screen
-                document.getElementById('sendOtpBtn').style.display = 'none';
-                document.getElementById('otpDisplayCode').textContent = generatedOTP;
-                document.getElementById('otpDisplayCard').style.display = 'block';
-                document.getElementById('otpRevealCode').textContent = generatedOTP;
-            }
+            } catch {}
         }
 
         function goToOtpStep() {
