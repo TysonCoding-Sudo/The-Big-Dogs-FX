@@ -60,6 +60,9 @@ input int    AggressiveImpulsePips  = 15;   // Min impulse for CHoSD (pips)
 input int    AggressiveMaxTrades    = 2;    // Max trades in aggressive mode
 input double AggressiveMinRR        = 2.5;  // Min RR for aggressive trades
 
+input group "=== SYMBOL FILTER ==="
+input string AllowedSymbols         = "NAS100,US30,XAUUSD"; // Comma-separated allowed symbols
+
 //--- Global Variables
 datetime lastBarTime = 0;
 int zoneCount = 0;
@@ -121,6 +124,8 @@ void OnDeinit(const int reason) {
 //| Expert tick function                                               |
 //+------------------------------------------------------------------+
 void OnTick() {
+   if(!IsAllowedSymbol()) return;
+
    ENUM_TIMEFRAMES tf = IsAggressiveMode() ? AggressiveTimeframe : PERIOD_H1;
    datetime currentBarTime = iTime(_Symbol, tf, 0);
    
@@ -1081,6 +1086,23 @@ void CheckAggressiveEntries() {
                " | Sweep: ", sweptLevel);
       }
    }
+}
+
+//+------------------------------------------------------------------+
+//| Check if current symbol is in the allowed list                    |
+//+------------------------------------------------------------------+
+bool IsAllowedSymbol() {
+   string parts[];
+   int count = StringSplit(AllowedSymbols, ',', parts);
+   string currentSymbol = _Symbol;
+   StringToUpper(currentSymbol);
+
+   for(int i = 0; i < count; i++) {
+      string sym = parts[i];
+      StringToUpper(sym);
+      if(currentSymbol == sym) return true;
+   }
+   return false;
 }
 
 //+------------------------------------------------------------------+

@@ -1686,11 +1686,12 @@
 
                 <div id="tradesTab" class="tab-content">
                     <div id="tradesList">
-                        <div class="empty-state">
+                        <div id="tradesEmpty" class="empty-state">
                             <div class="empty-icon">&#x1F4C8;</div>
                             <div class="empty-text">No trades yet</div>
                             <div class="empty-subtext">Trades will appear here when the EA executes</div>
                         </div>
+                        <div id="tradesContainer" style="display:none;"></div>
                     </div>
                 </div>
 
@@ -2272,8 +2273,7 @@
             } catch {
                 // Demo deposits with history
                 deposits = [
-                    { amount: 300, method: 'bank_transfer', createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), note: 'Initial deposit' },
-                    { amount: 150, method: 'card', createdAt: new Date(Date.now() - 86400000).toISOString(), note: 'Bonus deposit' }
+                    { amount: 300, method: 'bank_transfer', createdAt: '2026-05-08T10:00:00.000Z', note: 'Initial deposit' }
                 ];
                 updateAccountSummary(deposits);
                 renderDeposits();
@@ -2334,6 +2334,7 @@
                 allTrades = data.trades || [];
                 updateJournalSummary(data);
                 renderJournal();
+                renderTrades();
 
                 // Update account balance with profit
                 const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0) || INITIAL_DEPOSIT;
@@ -2354,9 +2355,10 @@
                     losses
                 });
                 renderJournal();
+                renderTrades();
 
                 // Update balances from demo data
-                const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0) || 450;
+                const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0) || 300;
                 const newBalance = totalDeposited + totalMoney;
                 document.getElementById('accountBalance').textContent = `R${newBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 document.getElementById('totalProfit').textContent = `${totalMoney >= 0 ? '+' : ''}R${Math.abs(totalMoney).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -2366,8 +2368,61 @@
             }
         }
 
+        function renderTrades() {
+            const container = document.getElementById('tradesContainer');
+            const empty = document.getElementById('tradesEmpty');
+
+            if (allTrades.length === 0) {
+                empty.style.display = 'flex';
+                container.style.display = 'none';
+                return;
+            }
+
+            empty.style.display = 'none';
+            container.style.display = 'block';
+
+            container.innerHTML = allTrades.slice(0, 50).map(trade => {
+                const date = new Date(trade.entryTime);
+                const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const isWin = trade.pips > 0;
+                const isClosed = !!trade.exitTime;
+
+                return `
+                    <div class="trade-card">
+                        <div class="trade-header">
+                            <span class="trade-symbol">${trade.symbol}</span>
+                            <span class="badge ${trade.type.toLowerCase() === 'buy' ? 'badge-buy' : 'badge-sell'}">${trade.type}</span>
+                        </div>
+                        <div class="trade-journal-prices" style="margin-bottom:0">
+                            <div class="price-item">
+                                <div class="price-label">Entry</div>
+                                <div class="price-value">${typeof trade.entryPrice === 'number' ? trade.entryPrice.toFixed(2) : trade.entryPrice}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">Exit</div>
+                                <div class="price-value">${trade.exitPrice ? (typeof trade.exitPrice === 'number' ? trade.exitPrice.toFixed(2) : trade.exitPrice) : '--'}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">Pips</div>
+                                <div class="price-value" style="color:${isWin ? 'var(--success)' : 'var(--danger)'}">${isWin ? '+' : ''}${trade.pips}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">Status</div>
+                                <div class="price-value" style="color:${isClosed ? (isWin ? 'var(--success)' : 'var(--danger)') : 'var(--primary)'}">${isClosed ? (isWin ? 'Won' : 'Lost') : 'Open'}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between">
+                            <span>&#x1F4C5; ${dateStr} &#x1F551; ${timeStr}</span>
+                            <span>R${Math.abs(trade.moneyMade || 0).toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
         function generateDemoTrades() {
-            const symbols = ['US30', 'NAS100', 'XAUUSD', 'GBPUSD', 'EURUSD'];
+            const symbols = ['NAS100', 'US30', 'XAUUSD'];
             const types = ['BUY', 'SELL'];
             const reasons = ['Take Profit Hit', 'Stop Loss Hit', 'Breakeven', 'Trailing Stop'];
             const conditions = [
