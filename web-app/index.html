@@ -1576,7 +1576,7 @@
                     <div class="header-brand">THE BIG DOGS FX</div>
                     <div class="header-slogan">We chase the cash</div>
                 </div>
-                <button class="logout-btn" onclick="handleLogout()">&#x23FB;</button>
+                <button class="logout-btn" onclick="handleLogout()" title="Logout and switch account">&#x23FB; Logout</button>
             </div>
 
             <div class="user-bar">
@@ -2668,7 +2668,7 @@
             }
         }
 
-        function switchTab(tabName) {
+        function handleLogout() {
             token = null;
             session = null;
             localStorage.removeItem('userToken');
