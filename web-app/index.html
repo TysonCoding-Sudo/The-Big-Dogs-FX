@@ -642,6 +642,19 @@
         .session-status.open { background: rgba(0, 200, 83, 0.2); color: var(--success); }
         .session-status.closed { background: rgba(255, 23, 68, 0.2); color: var(--danger); }
 
+        .app-footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 8px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .app-footer .footer-name {
+            color: var(--primary);
+            font-weight: 700;
+            font-style: italic;
+        }
+
         @media (min-width: 768px) {
             .login-card { padding: 40px 36px; }
             .brand { font-size: 36px; }
@@ -943,6 +956,11 @@
                                 <div class="session-time">13:00 - 22:00</div>
                                 <div class="session-status" id="nyStatus">Closed</div>
                             </div>
+                        </div>
+
+                        <div class="app-footer">
+                            <span>Created by</span>
+                            <span class="footer-name">ty_son_de_3rd</span>
                         </div>
                     </div>
 
