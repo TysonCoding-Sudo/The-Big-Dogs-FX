@@ -151,4 +151,49 @@ router.post('/verify-otp', [
   }
 });
 
+// Trading mode toggle
+router.get('/trading-mode', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('tradingMode');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ tradingMode: user.tradingMode });
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+});
+
+router.post('/trading-mode', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const { mode } = req.body;
+    if (!['normal', 'aggressive'].includes(mode)) {
+      return res.status(400).json({ message: 'Mode must be normal or aggressive' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      decoded.id,
+      { tradingMode: mode },
+      { new: true }
+    ).select('tradingMode');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Propagate to MT5 bridge
+    try {
+      const mt5Bridge = require('../services/mt5Bridge');
+      await mt5Bridge.setTradingMode(mode);
+    } catch (e) {
+      // Bridge not critical for response
+    }
+
+    res.json({ tradingMode: user.tradingMode });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

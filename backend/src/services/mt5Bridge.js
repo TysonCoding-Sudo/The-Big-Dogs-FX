@@ -1,6 +1,15 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 let io = null;
+
+function getModeFilePath() {
+  const appData = process.env.APPDATA || '';
+  if (!appData) return null;
+  const dir = path.join(appData, 'MetaQuotes', 'Terminal', 'Common', 'Files');
+  return path.join(dir, 'BigDogsFX_Mode.cfg');
+}
 
 const mt5Bridge = {
   setIO(socketIO) {
@@ -40,6 +49,33 @@ const mt5Bridge = {
     } catch (error) {
       console.error('Command failed:', error.message);
       return null;
+    }
+  },
+
+  async setTradingMode(mode) {
+    // Write to MT5 Common Files folder for EA to read
+    const filePath = getModeFilePath();
+    if (filePath) {
+      try {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, `mode=${mode}`, 'utf8');
+        console.log(`Trading mode written to ${filePath}: ${mode}`);
+      } catch (err) {
+        console.error('Failed to write mode file:', err.message);
+      }
+    }
+
+    // Also try HTTP relay to MT5 terminal bridge
+    try {
+      await axios.post('http://localhost:8080/api/command', {
+        command: 'setTradingMode',
+        data: { mode }
+      });
+    } catch {
+      // HTTP bridge may not be running
     }
   }
 };

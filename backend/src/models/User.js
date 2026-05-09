@@ -31,6 +31,7 @@ const userSchema = new mongoose.Schema({
     maxSpread: { type: Number, default: 300 }
   },
   isActive: { type: Boolean, default: true },
+  tradingMode: { type: String, enum: ['normal', 'aggressive'], default: 'normal' },
   createdAt: { type: Date, default: Date.now }
 }, {
   timestamps: true

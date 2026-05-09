@@ -51,9 +51,26 @@ input int    ExtraSLPips        = 10;       // Extra buffer beyond zone (pips)
 input bool   UseStructureTP     = true;     // TP at next structure level
 input int    MinRRRatio         = 2;        // Minimum Risk:Reward ratio
 
+input group "=== AGGRESSIVE MODE ==="
+input bool   AggressiveModeEnabled = false; // Enable aggressive mode (M1/M5)
+input ENUM_TIMEFRAMES AggressiveTimeframe = PERIOD_M5; // TF for aggressive
+input double AggressiveRiskPercent  = 1.0;  // Risk % for aggressive trades
+input int    AggressiveMinSwingBars = 10;   // Min swing lookback (bars)
+input int    AggressiveImpulsePips  = 15;   // Min impulse for CHoSD (pips)
+input int    AggressiveMaxTrades    = 2;    // Max trades in aggressive mode
+input double AggressiveMinRR        = 2.5;  // Min RR for aggressive trades
+
 //--- Global Variables
 datetime lastBarTime = 0;
 int zoneCount = 0;
+
+//--- Aggressive Mode Globals
+datetime lastAggressiveBarTime = 0;
+datetime lastModeCheck = 0;
+bool cachedAggressiveMode = false;
+double swingHighs[];
+double swingLows[];
+int swingCount = 0;
 
 //--- Zone Structure
 struct SZone {
@@ -84,6 +101,10 @@ int OnInit() {
    Print("   EA Initialized Successfully");
    Print("   Risk: ", RiskPercent, "% | BE: ", BreakevenPips, " pips");
    Print("   Min Impulsive: ", MinImpulsivePips, " pips");
+   if(AggressiveModeEnabled) {
+      Print("   AGGRESSIVE MODE ACTIVE - TF: ", EnumToString(AggressiveTimeframe));
+      Print("   Agg Risk: ", AggressiveRiskPercent, "% | Impulse: ", AggressiveImpulsePips, " pips");
+   }
    Print("==============================================");
    
    return(INIT_SUCCEEDED);
@@ -100,17 +121,35 @@ void OnDeinit(const int reason) {
 //| Expert tick function                                               |
 //+------------------------------------------------------------------+
 void OnTick() {
-   datetime currentBarTime = iTime(_Symbol, PERIOD_H1, 0);
+   ENUM_TIMEFRAMES tf = IsAggressiveMode() ? AggressiveTimeframe : PERIOD_H1;
+   datetime currentBarTime = iTime(_Symbol, tf, 0);
    
-   if(currentBarTime != lastBarTime) {
-      lastBarTime = currentBarTime;
-      ScanForZones();
-   }
-   
-   ManageOpenTrades();
-   
-   if(IsWithinSession() && IsSpreadOK() && CountOpenTrades() < MaxOpenTrades) {
-      CheckForEntries();
+   if(IsAggressiveMode()) {
+      // === AGGRESSIVE MODE LOGIC (M1/M5) ===
+      if(currentBarTime != lastAggressiveBarTime) {
+         lastAggressiveBarTime = currentBarTime;
+         UpdateAggressiveModeCache();
+         ScanAggressiveSwings();
+      }
+      
+      ManageOpenTrades();
+      
+      if(IsWithinSession() && IsSpreadOK() &&
+         CountOpenTrades() < MathMin(MaxOpenTrades, AggressiveMaxTrades)) {
+         CheckAggressiveEntries();
+      }
+   } else {
+      // === NORMAL MODE LOGIC (H1) ===
+      if(currentBarTime != lastBarTime) {
+         lastBarTime = currentBarTime;
+         ScanForZones();
+      }
+      
+      ManageOpenTrades();
+      
+      if(IsWithinSession() && IsSpreadOK() && CountOpenTrades() < MaxOpenTrades) {
+         CheckForEntries();
+      }
    }
 }
 
@@ -604,6 +643,442 @@ void CheckForEntries() {
       
       if(trade.Sell(lotSize, _Symbol, bid, sl, tp, "BigDogsFX Sell")) {
          Print("SELL Order Placed | Lot: ", lotSize, " | SL: ", sl, " | TP: ", tp);
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Check if aggressive mode is active                                |
+//+------------------------------------------------------------------+
+bool IsAggressiveMode() {
+   if(AggressiveModeEnabled) return true;
+   return cachedAggressiveMode;
+}
+
+//+------------------------------------------------------------------+
+//| Update aggressive mode cache from file on new bar                |
+//+------------------------------------------------------------------+
+void UpdateAggressiveModeCache() {
+   int handle = FileOpen("BigDogsFX_Mode.cfg", FILE_TXT|FILE_READ|FILE_COMMON, 0);
+   if(handle != INVALID_HANDLE) {
+      string content = "";
+      while(!FileIsEnding(handle)) {
+         content += FileReadString(handle);
+      }
+      FileClose(handle);
+      StringReplace(content, "\n", "");
+      StringReplace(content, "\r", "");
+      cachedAggressiveMode = (content == "mode=aggressive");
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Scan aggressive timeframe for swing highs/lows                    |
+//+------------------------------------------------------------------+
+void ScanAggressiveSwings() {
+   ArrayResize(swingHighs, 0);
+   ArrayResize(swingLows, 0);
+   swingCount = 0;
+   
+   int lookback = AggressiveMinSwingBars * 3;
+   for(int i = 2; i < lookback; i++) {
+      // Swing high: candle i-1 has higher high than both neighbors
+      double high1 = iHigh(_Symbol, AggressiveTimeframe, i - 1);
+      double high0 = iHigh(_Symbol, AggressiveTimeframe, i);
+      double high2 = iHigh(_Symbol, AggressiveTimeframe, i - 2);
+      
+      if(high1 > high0 && high1 > high2) {
+         int idx = ArraySize(swingHighs);
+         ArrayResize(swingHighs, idx + 1);
+         swingHighs[idx] = high1;
+      }
+      
+      // Swing low: candle i-1 has lower low than both neighbors
+      double low1 = iLow(_Symbol, AggressiveTimeframe, i - 1);
+      double low0 = iLow(_Symbol, AggressiveTimeframe, i);
+      double low2 = iLow(_Symbol, AggressiveTimeframe, i - 2);
+      
+      if(low1 < low0 && low1 < low2) {
+         int idx = ArraySize(swingLows);
+         ArrayResize(swingLows, idx + 1);
+         swingLows[idx] = low1;
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Find the most recent swing level that was swept by price         |
+//+------------------------------------------------------------------+
+bool DetectLiquiditySweep(double currentBid, double currentAsk,
+                          double &sweptLevel, int &sweepDirection) {
+   double pipSize = GetPipSize();
+   double sweepBuffer = pipSize * 3;
+   
+   // Check bullish setup: price swept below a recent swing low
+   // and is now trading back above that level
+   for(int i = 0; i < ArraySize(swingLows); i++) {
+      // Find the lowest price in recent bars to confirm sweep
+      double lowestSinceSwing = DBL_MAX;
+      for(int b = 1; b <= 5; b++) {
+         double low = iLow(_Symbol, AggressiveTimeframe, b);
+         if(low < lowestSinceSwing) lowestSinceSwing = low;
+      }
+      
+      if(lowestSinceSwing <= swingLows[i] + sweepBuffer &&
+         currentBid >= swingLows[i] - pipSize) {
+         sweptLevel = swingLows[i];
+         sweepDirection = 1; // Bullish (swept low, looking for buy)
+         return true;
+      }
+   }
+   
+   // Check bearish setup: price swept above a recent swing high
+   // and is now trading back below that level
+   for(int i = 0; i < ArraySize(swingHighs); i++) {
+      double highestSinceSwing = 0;
+      for(int b = 1; b <= 5; b++) {
+         double high = iHigh(_Symbol, AggressiveTimeframe, b);
+         if(high > highestSinceSwing) highestSinceSwing = high;
+      }
+      
+      if(highestSinceSwing >= swingHighs[i] - sweepBuffer &&
+         currentAsk <= swingHighs[i] + pipSize) {
+         sweptLevel = swingHighs[i];
+         sweepDirection = -1; // Bearish (swept high, looking for sell)
+         return true;
+      }
+   }
+   
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| Detect Change in State of Delivery after sweep                   |
+//+------------------------------------------------------------------+
+bool DetectCHoSD(double sweptLevel, int sweepDirection,
+                 double &impulseHigh, double &impulseLow) {
+   double pipSize = GetPipSize();
+   double minImpulse = AggressiveImpulsePips * pipSize;
+   double currentBid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   
+   if(sweepDirection == 1) {
+      // Bullish: after sweeping low, look for consecutive bullish candles
+      // Check last 3 candles for impulsive buying
+      double maxHigh = 0;
+      double totalBullBody = 0;
+      int bullCount = 0;
+      
+      for(int i = 1; i <= 3; i++) {
+         double open = iOpen(_Symbol, AggressiveTimeframe, i);
+         double close = iClose(_Symbol, AggressiveTimeframe, i);
+         double high = iHigh(_Symbol, AggressiveTimeframe, i);
+         double low = iLow(_Symbol, AggressiveTimeframe, i);
+         
+         if(close > open && (close - open) >= minImpulse * 0.5) {
+            bullCount++;
+            totalBullBody += (close - open);
+            if(high > maxHigh) maxHigh = high;
+         }
+      }
+      
+      if(bullCount >= 2 && totalBullBody >= minImpulse * 1.5) {
+         impulseHigh = maxHigh;
+         impulseLow = sweptLevel - pipSize;
+         return true;
+      }
+   } else if(sweepDirection == -1) {
+      // Bearish: after sweeping high, look for consecutive bearish candles
+      double minLow = DBL_MAX;
+      double totalBearBody = 0;
+      int bearCount = 0;
+      
+      for(int i = 1; i <= 3; i++) {
+         double open = iOpen(_Symbol, AggressiveTimeframe, i);
+         double close = iClose(_Symbol, AggressiveTimeframe, i);
+         double high = iHigh(_Symbol, AggressiveTimeframe, i);
+         double low = iLow(_Symbol, AggressiveTimeframe, i);
+         
+         if(close < open && (open - close) >= minImpulse * 0.5) {
+            bearCount++;
+            totalBearBody += (open - close);
+            if(low < minLow) minLow = low;
+         }
+      }
+      
+      if(bearCount >= 2 && totalBearBody >= minImpulse * 1.5) {
+         impulseHigh = sweptLevel + pipSize;
+         impulseLow = minLow;
+         return true;
+      }
+   }
+   
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| Find IFVG (bullish) or FVG (bearish) overlapping with Fib levels|
+//+------------------------------------------------------------------+
+bool FindIFVGNearFib(int sweepDirection, double fibStart, double fibEnd,
+                     double &entryPrice, double &fvgTop, double &fvgBottom) {
+   int lookback = MathMax(AggressiveMinSwingBars, 15);
+   double pipSize = GetPipSize();
+   
+   // Calculate fib levels
+   double range = MathAbs(fibEnd - fibStart);
+   double fib50 = fibStart + (sweepDirection == 1 ? 0.50 * range : -0.50 * range);
+   double fib618 = fibStart + (sweepDirection == 1 ? 0.618 * range : -0.618 * range);
+   double fib786 = fibStart + (sweepDirection == 1 ? 0.786 * range : -0.786 * range);
+   
+   double fibLevels[3] = {fib50, fib618, fib786};
+   double fibValues[3] = {0.50, 0.618, 0.786};
+   
+   if(sweepDirection == 1) {
+      // Bullish - look for Inverse FVG (IFVG) on lower timeframe
+      // IFVG: 3-candle pattern where low of candle 1 > high of candle 3
+      // and candle 2 is the bearish impulse creating the gap
+      for(int i = 3; i < lookback; i++) {
+         double low1 = iLow(_Symbol, AggressiveTimeframe, i - 2);
+         double high3 = iHigh(_Symbol, AggressiveTimeframe, i);
+         double low3 = iLow(_Symbol, AggressiveTimeframe, i);
+         double high2 = iHigh(_Symbol, AggressiveTimeframe, i - 1);
+         double low2 = iLow(_Symbol, AggressiveTimeframe, i - 1);
+         
+         // IFVG exists: low of candle 1 > high of candle 3
+         if(low1 > high3) {
+            double ifvgTop = low1;
+            double ifvgBottom = high3;
+            double ifvgMid = (ifvgTop + ifvgBottom) / 2.0;
+            
+            // Check if any fib level falls within the IFVG
+            for(int f = 0; f < 3; f++) {
+               if(fibLevels[f] >= ifvgBottom - pipSize &&
+                  fibLevels[f] <= ifvgTop + pipSize) {
+                  entryPrice = fibLevels[f];
+                  fvgTop = ifvgTop;
+                  fvgBottom = ifvgBottom;
+                  return true;
+               }
+            }
+         }
+      }
+   } else if(sweepDirection == -1) {
+      // Bearish - look for standard FVG
+      // FVG: 3-candle pattern where high of candle 1 < low of candle 3
+      for(int i = 3; i < lookback; i++) {
+         double high1 = iHigh(_Symbol, AggressiveTimeframe, i - 2);
+         double low3 = iLow(_Symbol, AggressiveTimeframe, i);
+         
+         // FVG exists: high of candle 1 < low of candle 3
+         if(high1 < low3) {
+            double fvgTop = low3;
+            double fvgBottom = high1;
+            
+            // Check if any fib level falls within the FVG
+            for(int f = 0; f < 3; f++) {
+               if(fibLevels[f] >= fvgBottom - pipSize &&
+                  fibLevels[f] <= fvgTop + pipSize) {
+                  entryPrice = fibLevels[f];
+                  fvgTop = fvgTop;
+                  fvgBottom = fvgBottom;
+                  return true;
+               }
+            }
+         }
+      }
+   }
+   
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| Find next liquidity target for TP in aggressive mode              |
+//+------------------------------------------------------------------+
+double FindNextLiquidityTarget(int sweepDirection, double currentPrice) {
+   double pipSize = GetPipSize();
+   
+   if(sweepDirection == 1) {
+      // Bullish: next swing high above price
+      for(int i = 0; i < ArraySize(swingHighs); i++) {
+         if(swingHighs[i] > currentPrice + (5 * pipSize)) {
+            return swingHighs[i];
+         }
+      }
+      // Fallback: look at candle highs
+      for(int i = 1; i <= 50; i++) {
+         double high = iHigh(_Symbol, AggressiveTimeframe, i);
+         if(high > currentPrice + (5 * pipSize)) {
+            return high;
+         }
+      }
+   } else {
+      // Bearish: next swing low below price
+      for(int i = 0; i < ArraySize(swingLows); i++) {
+         if(swingLows[i] < currentPrice - (5 * pipSize)) {
+            return swingLows[i];
+         }
+      }
+      // Fallback: look at candle lows
+      for(int i = 1; i <= 50; i++) {
+         double low = iLow(_Symbol, AggressiveTimeframe, i);
+         if(low < currentPrice - (5 * pipSize)) {
+            return low;
+         }
+      }
+   }
+   
+   return 0;
+}
+
+//+------------------------------------------------------------------+
+//| Calculate lot size for aggressive mode                           |
+//+------------------------------------------------------------------+
+double CalculateAggressiveLotSize(double slDistancePips) {
+   double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+   double riskAmount = accountBalance * (AggressiveRiskPercent / 100.0);
+   
+   double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   
+   double lotSize = (riskAmount / (slDistancePips * tickValue / tickSize));
+   
+   double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   double lotStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   
+   lotSize = MathMax(lotSize, MinLotSize);
+   lotSize = MathMin(lotSize, MaxLotSize);
+   lotSize = MathMax(lotSize, minLot);
+   lotSize = MathMin(lotSize, maxLot);
+   lotSize = MathFloor(lotSize / lotStep) * lotStep;
+   
+   return NormalizeDouble(lotSize, 2);
+}
+
+//+------------------------------------------------------------------+
+//| Check for aggressive entry signals (liquidity sweep + CHoSD +   |
+//| IFVG/FVG at fib levels)                                         |
+//+------------------------------------------------------------------+
+void CheckAggressiveEntries() {
+   // Only trade during London/NY sessions
+   if(!IsWithinSession()) return;
+   
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double pipSize = GetPipSize();
+   
+   // Step 1: Detect liquidity sweep
+   double sweptLevel;
+   int sweepDirection; // 1 = bullish (swept low), -1 = bearish (swept high)
+   
+   if(!DetectLiquiditySweep(bid, ask, sweptLevel, sweepDirection)) return;
+   
+   // Step 2: Detect Change in State of Delivery
+   double impulseHigh, impulseLow;
+   if(!DetectCHoSD(sweptLevel, sweepDirection, impulseHigh, impulseLow)) return;
+   
+   // Fib start/end based on sweep direction
+   double fibStart, fibEnd;
+   if(sweepDirection == 1) {
+      fibStart = sweptLevel;    // Sweep low = start of fib
+      fibEnd = impulseHigh;     // Impulse high = end of fib
+   } else {
+      fibStart = sweptLevel;    // Sweep high = start of fib
+      fibEnd = impulseLow;      // Impulse low = end of fib
+   }
+   
+   double fibRange = MathAbs(fibEnd - fibStart);
+   if(fibRange < AggressiveImpulsePips * pipSize * 2) return; // Too small
+   
+   // Step 3: Find IFVG/FVG at fib retracement levels
+   double entryPrice, fvgTop, fvgBottom;
+   if(!FindIFVGNearFib(sweepDirection, fibStart, fibEnd,
+                       entryPrice, fvgTop, fvgBottom)) return;
+   
+   // Step 4: No-negative-drawdown check
+   // Price must be at or very near the entry level (within 2 pips)
+   // The FVG/IFVG void naturally prevents drawdown since no orders
+   // sit in the gap - entry at a fib level within this gap means
+   // price must fill the gap before any retracement can occur
+   double currentPrice = (sweepDirection == 1) ? bid : ask;
+   double priceDelta = MathAbs(currentPrice - entryPrice);
+   if(priceDelta > pipSize * 2) return;
+   
+   // Verify entry is within FVG/IFVG boundaries
+   if(sweepDirection == 1) {
+      // For BUY: entry must be at or above IFVG bottom
+      if(entryPrice < fvgBottom - pipSize) return;
+      // No overhead supply in the IFVG gap prevents drawdown
+   } else {
+      // For SELL: entry must be at or below FVG top
+      if(entryPrice > fvgTop + pipSize) return;
+      // No bid support in the FVG gap prevents drawdown
+   }
+   
+   // Step 5: Calculate SL and TP
+   double sl, tp;
+   double slDistancePips, tpDistancePips;
+   
+   if(sweepDirection == 1) {
+      // BUY setup
+      // SL just below the swept low, or below IFVG bottom (whichever is lower)
+      sl = MathMin(sweptLevel, fvgBottom) - (ExtraSLPips * pipSize);
+      slDistancePips = (entryPrice - sl) / pipSize;
+      
+      if(slDistancePips < 5) return; // SL too tight
+      
+      // TP at next liquidity (swing high)
+      tp = FindNextLiquidityTarget(1, entryPrice);
+      if(tp == 0 || tp <= entryPrice + (3 * pipSize)) {
+         tp = entryPrice + (slDistancePips * AggressiveMinRR * pipSize);
+      }
+      tpDistancePips = (tp - entryPrice) / pipSize;
+      
+   } else {
+      // SELL setup
+      // SL just above the swept high, or above FVG top (whichever is higher)
+      sl = MathMax(sweptLevel, fvgTop) + (ExtraSLPips * pipSize);
+      slDistancePips = (sl - entryPrice) / pipSize;
+      
+      if(slDistancePips < 5) return; // SL too tight
+      
+      // TP at next liquidity (swing low)
+      tp = FindNextLiquidityTarget(-1, entryPrice);
+      if(tp == 0 || tp >= entryPrice - (3 * pipSize)) {
+         tp = entryPrice - (slDistancePips * AggressiveMinRR * pipSize);
+      }
+      tpDistancePips = (entryPrice - tp) / pipSize;
+   }
+   
+   // Check minimum RR ratio
+   if(tpDistancePips / slDistancePips < AggressiveMinRR) {
+      tp = sweepDirection == 1
+         ? entryPrice + (slDistancePips * AggressiveMinRR * pipSize)
+         : entryPrice - (slDistancePips * AggressiveMinRR * pipSize);
+   }
+   
+   // Step 6: Place the trade
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   double lotSize = CalculateAggressiveLotSize(slDistancePips);
+   
+   sl = NormalizeDouble(sl, digits);
+   tp = NormalizeDouble(tp, digits);
+   lotSize = NormalizeDouble(lotSize, 2);
+   
+   if(sweepDirection == 1) {
+      if(trade.Buy(lotSize, _Symbol, ask, sl, tp,
+         "BigDogsFX Agg Buy")) {
+         Print("AGGRESSIVE BUY | Lot: ", lotSize,
+               " | Entry: ", entryPrice,
+               " | SL: ", sl, " | TP: ", tp,
+               " | Sweep: ", sweptLevel);
+      }
+   } else {
+      if(trade.Sell(lotSize, _Symbol, bid, sl, tp,
+         "BigDogsFX Agg Sell")) {
+         Print("AGGRESSIVE SELL | Lot: ", lotSize,
+               " | Entry: ", entryPrice,
+               " | SL: ", sl, " | TP: ", tp,
+               " | Sweep: ", sweptLevel);
       }
    }
 }
