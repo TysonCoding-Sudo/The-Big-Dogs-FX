@@ -1395,6 +1395,31 @@
         .calendar-day .trade-count {
             font-size: 8px; color: var(--text-muted); margin-top: 1px;
         }
+        .calendar-day.weekend {
+            background: rgba(255,23,68,0.04);
+            color: var(--text-muted);
+            font-size: 10px;
+            cursor: default;
+            pointer-events: none;
+        }
+        .calendar-day.weekend .weekend-label {
+            font-size: 7px; color: var(--danger); font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px;
+        }
+        .calendar-mode-legend {
+            display: flex; gap: 12px; margin-bottom: 12px;
+            padding: 10px 14px; background: var(--bg-input);
+            border-radius: var(--radius-sm); font-size: 11px;
+            flex-wrap: wrap; align-items: center;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .calendar-mode-legend span { display: flex; align-items: center; gap: 6px; }
+        .legend-dot {
+            width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+        }
+        .legend-dot.normal { background: var(--text-muted); }
+        .legend-dot.aggressive { background: var(--danger); }
+        .legend-dot.god-mode { background: #00bfff; box-shadow: 0 0 8px rgba(0,150,255,0.5); }
 
         /* Day Detail Overlay */
         .day-detail-overlay {
@@ -1420,6 +1445,17 @@
         .day-detail-pnl { font-size: 24px; font-weight: 900; margin-top: 4px; }
         .day-detail-pnl.pos { color: var(--success); }
         .day-detail-pnl.neg { color: var(--danger); }
+        .day-detail-mode {
+            font-size: 11px; font-weight: 700; padding: 3px 10px;
+            border-radius: 20px; display: inline-block; margin-top: 6px;
+            letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .day-detail-mode.normal { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+        .day-detail-mode.aggressive { background: rgba(255,23,68,0.15); color: var(--danger); }
+        .day-detail-mode.god-mode {
+            background: rgba(0,191,255,0.12); color: #00bfff;
+            box-shadow: 0 0 12px rgba(0,150,255,0.3);
+        }
         .day-detail-close {
             background: none; border: 1px solid rgba(255,255,255,0.08);
             color: var(--text-muted); width: 32px; height: 32px;
@@ -2191,6 +2227,12 @@
                             <span class="calendar-nav-label" id="calendarLabel">May 2026</span>
                             <button class="calendar-nav-btn" onclick="changeMonth(1)">&#x276F;</button>
                         </div>
+                        <div class="calendar-mode-legend">
+                            <span><span class="legend-dot normal"></span>Normal</span>
+                            <span><span class="legend-dot aggressive"></span>Aggressive</span>
+                            <span><span class="legend-dot god-mode"></span>GOD MODE</span>
+                            <span style="color:var(--danger);margin-left:auto;">&#x26A0; Sat/Sun = Market Closed</span>
+                        </div>
                         <div class="trading-calendar" id="tradingCalendar">
                             <!-- Calendar days injected here -->
                         </div>
@@ -2927,9 +2969,9 @@
                     document.getElementById('statOpen').textContent = '0';
                 }
             }
-            // Preload current month trades for calendar
-            const now = new Date();
-            loadMonthTrades(now.getMonth(), now.getFullYear());
+            // Preload current month trades for calendar (UTC+2)
+            const initUtc2 = getUTC2Date();
+            loadMonthTrades(initUtc2.month, initUtc2.year);
         }
 
         async function loadMonthTrades(month, year) {
@@ -2938,47 +2980,7 @@
                 const data = await response.json();
                 allMonthTrades = data.trades || [];
             } catch {
-                // Generate demo trades for the month if no backend
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
                 allMonthTrades = [];
-                for (let d = 1; d <= daysInMonth; d++) {
-                    if (Math.random() > 0.6) {
-                        const pips = Math.round(Math.random() * 40 - 10);
-                        const money = pips * 3.5 * 0.7;
-                        const isBuy = Math.random() > 0.5;
-                        const entry = isBuy ? 1.08500 + Math.random() * 0.002 : 1.09000 - Math.random() * 0.002;
-                        const sessions = ['London', 'NY', 'Asia'];
-                        const patterns = ['Engulfing', 'Inside Bar', 'Morning Star', 'Evening Star', 'Pin Bar'];
-                        allMonthTrades.push({
-                            entryTime: new Date(year, month, d, 8 + Math.floor(Math.random() * 10), Math.floor(Math.random() * 60)).toISOString(),
-                            exitTime: new Date(year, month, d, 10 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 60)).toISOString(),
-                            symbol: ['US30', 'NAS100', 'XAUUSD', 'GBPUSD', 'EURUSD'][Math.floor(Math.random() * 5)],
-                            type: isBuy ? 'BUY' : 'SELL',
-                            lotSize: 0.1 + Math.floor(Math.random() * 10) / 10,
-                            entryPrice: entry,
-                            exitPrice: entry + (isBuy ? pips * 0.0001 : -pips * 0.0001),
-                            pips: pips,
-                            moneyMade: Math.round(money * 100) / 100,
-                            session: sessions[Math.floor(Math.random() * sessions.length)],
-                            candleType: ['Bullish', 'Bearish', 'Doji'][Math.floor(Math.random() * 3)],
-                            resultReason: pips > 0 ? 'Take Profit Hit' : 'Stop Loss Hit',
-                            learning: pips > 0 ? 'Good setup, followed plan' : 'Missed early exit signal',
-                            conditionsMet: pips > 0,
-                            adaptiveMode: pips > 0 ? 'aggressive' : 'normal',
-                            riskUsed: 2,
-                            patternMatched: patterns[Math.floor(Math.random() * patterns.length)],
-                            confidenceScore: 60 + Math.floor(Math.random() * 35),
-                            zoneType: ['supply', 'demand'][Math.floor(Math.random() * 2)],
-                            pattern: patterns[Math.floor(Math.random() * patterns.length)],
-                            conditions: [
-                                { name: 'Impulsive', fulfilled: pips > 0 },
-                                { name: 'FVG Present', fulfilled: Math.random() > 0.3 },
-                                { name: 'HTF Trend', fulfilled: pips > 0 },
-                                { name: 'Volume Spike', fulfilled: Math.random() > 0.4 }
-                            ]
-                        });
-                    }
-                }
             }
             renderCalendar();
         }
@@ -3164,9 +3166,32 @@
             renderJournal();
         }
 
-        // ===== CALENDAR VIEW =====
-        let calendarMonth = new Date().getMonth();
-        let calendarYear = new Date().getFullYear();
+        // ===== CALENDAR VIEW (UTC+2) =====
+        function getUTC2Date() {
+            const now = new Date();
+            const utc2 = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+            return {
+                year: utc2.getUTCFullYear(),
+                month: utc2.getUTCMonth(),
+                day: utc2.getUTCDate(),
+                dayOfWeek: utc2.getUTCDay(),
+                hour: utc2.getUTCHours(),
+                minute: utc2.getUTCMinutes()
+            };
+        }
+        function toUTC2(dateStr) {
+            const d = new Date(dateStr);
+            const utc2 = new Date(d.getTime() + 2 * 60 * 60 * 1000);
+            return {
+                year: utc2.getUTCFullYear(),
+                month: utc2.getUTCMonth(),
+                day: utc2.getUTCDate(),
+                dayOfWeek: utc2.getUTCDay()
+            };
+        }
+        const utc2Now = getUTC2Date();
+        let calendarMonth = utc2Now.month;
+        let calendarYear = utc2Now.year;
         let selectedDayTrades = null;
         let selectedDayStr = '';
 
@@ -3176,7 +3201,7 @@
             document.getElementById('calendarView').style.display = view === 'calendar' ? 'block' : 'none';
             document.getElementById('listView').style.display = view === 'list' ? 'block' : 'none';
             if (view === 'calendar') {
-                renderCalendar();
+                loadCalendarMonth(calendarMonth, calendarYear);
             }
         }
 
@@ -3200,8 +3225,8 @@
 
         function getTradesForDay(day) {
             return allMonthTrades.filter(t => {
-                const d = new Date(t.entryTime);
-                return d.getDate() === day && d.getMonth() === calendarMonth && d.getFullYear() === calendarYear;
+                const u = toUTC2(t.entryTime);
+                return u.day === day && u.month === calendarMonth && u.year === calendarYear;
             });
         }
 
@@ -3209,10 +3234,10 @@
             const container = document.getElementById('tradingCalendar');
             document.getElementById('calendarLabel').textContent = MONTHS[calendarMonth] + ' ' + calendarYear;
 
-            const now = new Date();
-            const today = now.getDate();
-            const thisMonth = now.getMonth();
-            const thisYear = now.getFullYear();
+            const utc2Now = getUTC2Date();
+            const today = utc2Now.day;
+            const thisMonth = utc2Now.month;
+            const thisYear = utc2Now.year;
 
             const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
             const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
@@ -3225,6 +3250,9 @@
             }
 
             for (let day = 1; day <= daysInMonth; day++) {
+                const dateObj = new Date(calendarYear, calendarMonth, day);
+                const dayOfWeek = dateObj.getDay();
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
                 const dayTrades = getTradesForDay(day);
                 const hasTrades = dayTrades.length > 0;
                 const isToday = day === today && calendarMonth === thisMonth && calendarYear === thisYear;
@@ -3242,13 +3270,30 @@
 
                 const selected = selectedDayStr === `${calendarYear}-${calendarMonth}-${day}`;
 
-                html += `<div class="calendar-day${isToday ? ' today' : ''}${hasTrades ? ' has-trades' : ''}${selected ? ' selected' : ''}" onclick="selectDay(${day})">
-                    ${day}
-                    ${hasTrades ? `<div class="day-dot ${dotClass}"></div><div class="trade-count">${count} trade${count > 1 ? 's' : ''}</div>` : ''}
-                </div>`;
+                if (isWeekend && !hasTrades) {
+                    html += `<div class="calendar-day weekend${isToday ? ' today' : ''}">
+                        ${day}
+                        <div class="weekend-label">Market Closed</div>
+                    </div>`;
+                } else {
+                    html += `<div class="calendar-day${isToday ? ' today' : ''}${hasTrades ? ' has-trades' : ''}${selected ? ' selected' : ''}" onclick="selectDay(${day})">
+                        ${day}
+                        ${hasTrades ? `<div class="day-dot ${dotClass}"></div><div class="trade-count">${count} trade${count > 1 ? 's' : ''}</div>` : ''}
+                    </div>`;
+                }
             }
 
             container.innerHTML = html;
+        }
+
+        function getDayMode(trades) {
+            const modes = new Set(trades.map(t => t.adaptiveMode));
+            if (modes.has('aggressive')) {
+                const hasAgentVoting = trades.some(t => t.agentVotingEnabled === true);
+                if (hasAgentVoting) return { label: 'GOD MODE ACTIVATED', cls: 'god-mode' };
+                return { label: 'Aggressive Mode', cls: 'aggressive' };
+            }
+            return { label: 'Normal Mode', cls: 'normal' };
         }
 
         function selectDay(day) {
@@ -3266,8 +3311,11 @@
             const totalMoney = dayTrades.reduce((s, t) => s + (t.moneyMade || 0), 0);
             const wins = dayTrades.filter(t => t.pips > 0).length;
             const losses = dayTrades.filter(t => t.pips <= 0).length;
+            const dayMode = getDayMode(dayTrades);
 
             document.getElementById('dayDetailDate').textContent = dateStr;
+            document.getElementById('dayDetailMode').textContent = dayMode.label;
+            document.getElementById('dayDetailMode').className = 'day-detail-mode ' + dayMode.cls;
             const pnlEl = document.getElementById('dayDetailPnl');
             pnlEl.textContent = `${totalMoney >= 0 ? '+' : ''}R${Math.abs(totalMoney).toLocaleString('en-ZA', { minimumFractionDigits: 2 })} | ${totalPips >= 0 ? '+' : ''}${totalPips} pips | ${wins}W / ${losses}L`;
             pnlEl.className = 'day-detail-pnl ' + (totalMoney >= 0 ? 'pos' : 'neg');
@@ -3687,6 +3735,7 @@
             <div class="day-detail-header">
                 <div>
                     <div class="day-detail-date" id="dayDetailDate"></div>
+                    <div class="day-detail-mode" id="dayDetailMode"></div>
                     <div class="day-detail-pnl" id="dayDetailPnl"></div>
                 </div>
                 <button class="day-detail-close" onclick="closeDayDetail()">&#x2716;</button>

@@ -87,6 +87,7 @@ router.get('/journal', authMiddleware, async (req, res) => {
       learning: t.learning,
       conditionsMet: t.conditionsMet,
       adaptiveMode: t.adaptiveMode,
+      agentVotingEnabled: t.agentVotingEnabled,
       riskUsed: t.riskUsed,
       patternMatched: t.patternMatched,
       confidenceScore: t.confidenceScore,
