@@ -189,6 +189,12 @@ router.post('/trading-mode', authMiddleware, async (req, res) => {
       // Bridge not critical for response
     }
 
+    // Broadcast to all connected devices
+    try {
+      const io = req.app.get('io');
+      if (io) io.to(req.userId.toString()).emit('state_update', { type: 'tradingMode', value: mode });
+    } catch (e) {}
+
     res.json({ tradingMode: user.tradingMode });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -224,6 +230,12 @@ router.post('/multi-agent-voting', authMiddleware, async (req, res) => {
     try {
       const mt5Bridge = require('../services/mt5Bridge');
       await mt5Bridge.setMultiAgentVoting(enabled);
+    } catch (e) {}
+
+    // Broadcast to all connected devices
+    try {
+      const io = req.app.get('io');
+      if (io) io.to(req.userId.toString()).emit('state_update', { type: 'agentVoting', value: enabled });
     } catch (e) {}
 
     res.json({ enabled: user.multiAgentVoting });
@@ -275,7 +287,24 @@ router.post('/ea-status', authMiddleware, async (req, res) => {
       await mt5Bridge.setEAStatus(eaActive);
     } catch (e) {}
 
+    // Broadcast to all connected devices
+    try {
+      const io = req.app.get('io');
+      if (io) io.to(req.userId.toString()).emit('state_update', { type: 'eaActive', value: eaActive });
+    } catch (e) {}
+
     res.json({ eaActive: user.eaActive });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Connected devices
+router.get('/devices', authMiddleware, async (req, res) => {
+  try {
+    const getConnectedDevices = req.app.get('getConnectedDevices');
+    const devices = getConnectedDevices ? getConnectedDevices(req.userId.toString()) : [];
+    res.json({ devices });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

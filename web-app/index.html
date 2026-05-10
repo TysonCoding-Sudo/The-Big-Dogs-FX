@@ -8,6 +8,7 @@
     <title>THE BIG DOGS FX</title>
     <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2116,6 +2117,98 @@
             100% { opacity: 0; }
         }
 
+        /* === CONNECTED DEVICES === */
+        .device-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,255,255,0.04);
+            margin-bottom: 10px;
+            transition: all 0.25s ease;
+        }
+        .device-item:hover { border-color: var(--border); }
+        .device-item.current {
+            border-color: rgba(0, 200, 83, 0.15);
+            background: rgba(0, 200, 83, 0.04);
+        }
+        .device-icon {
+            font-size: 28px;
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .device-info { flex: 1; min-width: 0; }
+        .device-name {
+            font-size: 14px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .device-current-badge {
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(0, 200, 83, 0.15);
+            color: var(--success);
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .device-os {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .device-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .device-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .device-dot.online { background: var(--success); box-shadow: 0 0 8px rgba(0, 200, 83, 0.5); animation: pulse 2s ease-in-out infinite; }
+        .device-dot.offline { background: var(--text-muted); }
+        .device-status .online { color: var(--success); }
+        .device-status .offline { color: var(--text-muted); }
+        .device-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .device-count {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 12px;
+            padding: 10px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .device-empty {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
         /* === LETS MAKE MONEY OVERLAY === */
         .lets-make-money-overlay {
             position: fixed;
@@ -2674,6 +2767,15 @@
                         </div>
                     </div>
 
+                    <!-- Connected Devices Card -->
+                    <div class="card" id="deviceInfoCard">
+                        <div class="card-title">&#x1F5A5; Connected Devices</div>
+                        <div id="deviceListContainer">
+                            <div class="device-empty" id="deviceEmptyState">No devices connected</div>
+                            <div id="deviceList" style="display:none"></div>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-title">Risk Settings</div>
                         <div class="setting-item">
@@ -2889,6 +2991,187 @@
         let dailyProfitReached = false;
         const DAILY_PROFIT_TARGET = 2000;
         let eaProfitCheckInterval = null;
+
+        // ===== SOCKET.IO & DEVICES =====
+        let socket = null;
+        let currentDevice = null;
+
+        function detectDevice() {
+            const ua = navigator.userAgent;
+            let type = 'Desktop', os = 'Windows', icon = '&#x1F5A5;';
+            if (/android/i.test(ua)) { type = 'Mobile'; os = 'Android'; icon = '&#x1F4F1;'; }
+            else if (/iPad|iPhone|iPod/i.test(ua)) { type = 'Mobile'; os = 'iOS'; icon = '&#x1F4F1;'; }
+            else if (/Mac/i.test(ua)) { os = 'macOS'; icon = '&#x1F5A5;'; }
+            else if (/Linux/i.test(ua)) { os = 'Linux'; icon = '&#x1F427;'; }
+
+            let browser = 'Browser';
+            if (ua.includes('Edg')) browser = 'Edge';
+            else if (ua.includes('Chrome')) browser = 'Chrome';
+            else if (ua.includes('Firefox')) browser = 'Firefox';
+            else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+            else if (ua.includes('OPR') || ua.includes('Opera')) browser = 'Opera';
+            else if (ua.includes('SamsungBrowser')) browser = 'Samsung Internet';
+
+            return {
+                type,
+                os,
+                browser,
+                icon,
+                isMobile: type === 'Mobile',
+                name: `${browser} on ${os}`
+            };
+        }
+
+        function initSocket() {
+            if (!WS_URL || socket) return;
+            currentDevice = detectDevice();
+            try {
+                socket = io(WS_URL, { transports: ['websocket', 'polling'] });
+
+                socket.on('connect', () => {
+                    console.log('Socket connected:', socket.id);
+                    const userId = (session && session.userId) || (session && session.email) || null;
+                    if (userId) {
+                        if (!session.userId) session.userId = userId;
+                        socket.emit('join', userId);
+                        socket.emit('register_device', {
+                            userId: userId,
+                            deviceType: currentDevice.type,
+                            deviceName: currentDevice.name,
+                            os: currentDevice.os,
+                            isMobile: currentDevice.isMobile
+                        });
+                    }
+                    loadDevices();
+                });
+
+                socket.on('state_update', (data) => {
+                    if (!data || !data.type) return;
+                    switch (data.type) {
+                        case 'eaActive':
+                            eaActive = data.value;
+                            if (document.getElementById('eaToggle')) {
+                                document.getElementById('eaToggle').checked = eaActive;
+                                const todayProfit = parseFloat(document.getElementById('eaTodayProfit')?.textContent?.replace('R', '')?.replace(',', '') || '0');
+                                updateEAUI(todayProfit);
+                            }
+                            break;
+                        case 'tradingMode':
+                            currentTradingMode = data.value;
+                            updateModeUI(data.value);
+                            updateGodMode();
+                            break;
+                        case 'agentVoting':
+                            agentVotingEnabled = data.value;
+                            updateAgentUI(data.value);
+                            updateGodMode();
+                            break;
+                    }
+                });
+
+                socket.on('devices_updated', (devices) => {
+                    renderDeviceList(devices || []);
+                });
+
+                socket.on('disconnect', () => {
+                    console.log('Socket disconnected');
+                });
+            } catch (e) {
+                console.log('Socket init failed (offline mode)');
+                socket = null;
+            }
+        }
+
+        function disconnectSocket() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        }
+
+        async function loadDevices() {
+            try {
+                const token = localStorage.getItem('userToken');
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const response = await fetch(API_URL + '/auth/devices', { headers });
+                const data = await response.json();
+                renderDeviceList(data.devices || []);
+            } catch {
+                renderDeviceList([]);
+            }
+        }
+
+        function renderDeviceList(devices) {
+            const container = document.getElementById('deviceList');
+            const empty = document.getElementById('deviceEmptyState');
+            const countEl = document.getElementById('deviceCount');
+
+            if (!container || !empty) return;
+
+            if (!currentDevice) currentDevice = detectDevice();
+
+            if (devices.length === 0) {
+                empty.style.display = 'block';
+                container.style.display = 'none';
+                // Show local device only
+                container.innerHTML = `
+                    <div class="device-item current">
+                        <div class="device-icon">${currentDevice.icon}</div>
+                        <div class="device-info">
+                            <div class="device-name">
+                                ${currentDevice.name}
+                                <span class="device-current-badge">This Device</span>
+                            </div>
+                            <div class="device-os">${currentDevice.os} &middot; ${currentDevice.type}</div>
+                        </div>
+                        <div class="device-status">
+                            <span class="device-dot offline"></span>
+                            <span class="offline">Offline</span>
+                        </div>
+                    </div>
+                    <div class="device-count">Local mode — backend not connected</div>
+                `;
+                return;
+            }
+
+            empty.style.display = 'none';
+            container.style.display = 'block';
+
+            const socketId = socket ? socket.id : null;
+            const localName = currentDevice.name;
+
+            container.innerHTML = devices.map(d => {
+                const isCurrent = d.socketId === socketId;
+                const connectedAt = new Date(d.connectedAt);
+                const timeStr = connectedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+                let icon = '&#x1F5A5;';
+                if (d.isMobile) icon = '&#x1F4F1;';
+                else if (d.os === 'Linux') icon = '&#x1F427;';
+
+                return `
+                    <div class="device-item${isCurrent ? ' current' : ''}">
+                        <div class="device-icon">${icon}</div>
+                        <div class="device-info">
+                            <div class="device-name">
+                                ${d.deviceName}
+                                ${isCurrent ? '<span class="device-current-badge">This Device</span>' : ''}
+                            </div>
+                            <div class="device-os">${d.os} &middot; ${d.deviceType}</div>
+                        </div>
+                        <div class="device-status">
+                            <span class="device-dot online"></span>
+                            <span class="online">Online</span>
+                        </div>
+                        <div class="device-time">${timeStr}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add count
+            const countHtml = `<div class="device-count">${devices.length} device${devices.length !== 1 ? 's' : ''} connected</div>`;
+            container.innerHTML += countHtml;
+        }
 
         // ===== BROKER SELECTION =====
         const BROKER_URLS = {
@@ -3116,6 +3399,8 @@
             Promise.all([loadTradingMode(), loadAgentVoting()]).then(() => updateGodMode());
             loadEAStatus();
             runPeriodicProfitCheck();
+            initSocket();
+            loadDevices();
             updateMarketSessions();
             setInterval(updateMarketSessions, 1000);
 
@@ -4233,6 +4518,7 @@
         }
 
         function handleLogout() {
+            disconnectSocket();
             showBotMessages(
                 ['Re lwele ntjaka lets try again tomorrow, tse pila fela, one LOVE'],
                 () => {
