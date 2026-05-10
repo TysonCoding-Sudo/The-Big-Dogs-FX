@@ -1223,11 +1223,13 @@
             position: relative;
             overflow: hidden;
         }
-        .trading-mode-card.aggressive {
+        .trading-mode-card.aggressive,
+        .trading-mode-card.active {
             border-color: rgba(255,215,0,0.25);
             box-shadow: var(--shadow-card), var(--glow-gold);
         }
-        .trading-mode-card.aggressive::before {
+        .trading-mode-card.aggressive::before,
+        .trading-mode-card.active::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0;
@@ -1256,7 +1258,8 @@
             background: rgba(255,255,255,0.06);
             color: var(--text-muted);
         }
-        .mode-status-badge.aggressive {
+        .mode-status-badge.aggressive,
+        .mode-status-badge.active {
             background: rgba(255,215,0,0.15);
             color: var(--primary);
             border: 1px solid rgba(255,215,0,0.2);
@@ -2000,6 +2003,13 @@
                             <span class="mode-status-badge normal" id="agentStatusBadge">OFF</span>
                         </div>
                         <div class="mode-toggle-row">
+                            <span class="mode-toggle-label" id="agentToggleLabel">&#x1F514; Enable Voting</span>
+                            <label class="mode-toggle-switch">
+                                <input type="checkbox" id="agentToggle" onchange="handleAgentToggle()">
+                                <span class="mode-toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="mode-toggle-row" style="margin-top:10px">
                             <span class="mode-toggle-label">Votes required to trade</span>
                             <span class="setting-value" id="agentMinAgree">3 / 5</span>
                         </div>
@@ -2362,6 +2372,7 @@
             }
 
             loadTradingMode();
+            loadAgentVoting();
             updateMarketSessions();
             setInterval(updateMarketSessions, 1000);
 
@@ -2466,6 +2477,58 @@
             }
         }
 
+        // ===== MULTI-AGENT VOTING =====
+        let agentVotingEnabled = false;
+
+        async function loadAgentVoting() {
+            try {
+                const token = localStorage.getItem('userToken');
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const response = await fetch(API_URL + '/auth/multi-agent-voting', { headers });
+                const data = await response.json();
+                agentVotingEnabled = data.enabled || false;
+            } catch {
+                agentVotingEnabled = false;
+            }
+            updateAgentUI(agentVotingEnabled);
+        }
+
+        function updateAgentUI(enabled) {
+            const toggle = document.getElementById('agentToggle');
+            const card = document.getElementById('agentVotingCard');
+            const badge = document.getElementById('agentStatusBadge');
+            const label = document.getElementById('agentToggleLabel');
+
+            if (toggle) toggle.checked = enabled;
+            if (card) card.className = 'trading-mode-card' + (enabled ? ' active' : '');
+            if (badge) {
+                badge.textContent = enabled ? 'ON' : 'OFF';
+                badge.className = 'mode-status-badge ' + (enabled ? 'active' : 'normal');
+            }
+            if (label) label.className = 'mode-toggle-label' + (enabled ? ' active' : '');
+        }
+
+        async function handleAgentToggle() {
+            const toggle = document.getElementById('agentToggle');
+            const newState = toggle.checked;
+            agentVotingEnabled = newState;
+            updateAgentUI(newState);
+
+            try {
+                const token = localStorage.getItem('userToken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                };
+                await fetch(API_URL + '/auth/multi-agent-voting', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ enabled: newState })
+                });
+            } catch {
+                // Offline mode - toggle works locally
+            }
+        }
         // ===== DEPOSITS =====
         let deposits = [];
         const INITIAL_DEPOSIT = 300;
