@@ -3177,8 +3177,10 @@
 
             if (tabName === 'journal' && !journalGreetingShown) {
                 journalGreetingShown = true;
+                const bal = document.getElementById('accountBalance')?.textContent || 'R300.00';
+                const prof = document.getElementById('totalProfit')?.textContent || 'R0.00';
                 showBotMessages([
-                    'Here is your initial balance and here is your total profit for the day!!',
+                    `Here is your initial balance and here is your total profit for the day!! Current Balance: ${bal} | Profit: ${prof}`,
                     'I am sure you are happy as i am sir, Thank you for giving me this opportunity to prove myself to you',
                     'We are going to achieve those goals together i promise you, Nthepe Brayaka, retlo fihla ko reyang ene sa fela pelo sa fela moya modimo oteng ophala baloyi',
                     'Lets MAKE THIS MONEY!!!'
