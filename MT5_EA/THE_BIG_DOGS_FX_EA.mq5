@@ -64,6 +64,15 @@ input double AggressiveMinRR        = 2.5;  // Min RR for aggressive trades
 input group "=== SYMBOL FILTER ==="
 input string AllowedSymbols         = "NAS100,US30,XAUUSD"; // Comma-separated allowed symbols
 
+input group "=== MULTI-AGENT VOTING ==="
+input bool   UseMultiAgentVoting   = false;    // Enable multi-agent consensus
+input int    MinAgreeCount         = 3;         // Min agents agreeing (1-5)
+input bool   Agent1_SnD            = true;      // Agent 1: S&D Zone Trader
+input bool   Agent2_Sweep          = true;      // Agent 2: Liquidity Sweep Trader
+input bool   Agent3_FVGFib         = true;      // Agent 3: FVG + Fib Trader
+input bool   Agent4_Momentum       = true;      // Agent 4: Momentum Breaker
+input bool   Agent5_Trend          = true;      // Agent 5: HTF Trend Follower
+
 //--- Global Variables
 datetime lastBarTime = 0;
 int zoneCount = 0;
@@ -90,6 +99,26 @@ struct SZone {
 
 SZone zones[];
 
+enum AgentVote { VOTE_NEUTRAL = 0, VOTE_BUY = 1, VOTE_SELL = -1 };
+
+struct AgentResult {
+   AgentVote vote;
+   double    entry;
+   double    sl;
+   double    tp;
+   string    reason;
+};
+
+struct ConsensusResult {
+   bool   hasConsensus;
+   int    direction;
+   double entry;
+   double sl;
+   double tp;
+   int    agreeCount;
+   string agentsSummary;
+};
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                     |
 //+------------------------------------------------------------------+
@@ -105,10 +134,13 @@ int OnInit() {
    Print("   EA Initialized Successfully");
    Print("   Risk: ", RiskPercent, "% | BE: ", BreakevenPips, " pips");
    Print("   Min Impulsive: ", MinImpulsivePips, " pips");
-   if(AggressiveModeEnabled) {
-      Print("   AGGRESSIVE MODE ACTIVE - TF: ", EnumToString(AggressiveTimeframe));
-      Print("   Agg Risk: ", AggressiveRiskPercent, "% | Impulse: ", AggressiveImpulsePips, " pips");
-   }
+    if(AggressiveModeEnabled) {
+       Print("   AGGRESSIVE MODE ACTIVE - TF: ", EnumToString(AggressiveTimeframe));
+       Print("   Agg Risk: ", AggressiveRiskPercent, "% | Impulse: ", AggressiveImpulsePips, " pips");
+    }
+    if(UseMultiAgentVoting) {
+       Print("   MULTI-AGENT VOTING ACTIVE - MinAgree: ", MinAgreeCount);
+    }
    Print("==============================================");
    
    return(INIT_SUCCEEDED);
@@ -129,7 +161,34 @@ void OnTick() {
 
    ENUM_TIMEFRAMES tf = IsAggressiveMode() ? AggressiveTimeframe : PERIOD_H1;
    datetime currentBarTime = iTime(_Symbol, tf, 0);
-   
+
+   if(UseMultiAgentVoting) {
+      // === MULTI-AGENT VOTING (replaces both normal & aggressive) ===
+      if(IsAggressiveMode()) {
+         if(currentBarTime != lastAggressiveBarTime) {
+            lastAggressiveBarTime = currentBarTime;
+            UpdateAggressiveModeCache();
+            ScanAggressiveSwings();
+         }
+      } else {
+         if(currentBarTime != lastBarTime) {
+            lastBarTime = currentBarTime;
+            ScanForZones();
+         }
+      }
+
+      ManageOpenTrades();
+
+      if(IsWithinSession() && !IsSpreadHours() && IsSpreadOK() &&
+         CountOpenTrades() < (IsAggressiveMode() ? MathMin(MaxOpenTrades, AggressiveMaxTrades) : MaxOpenTrades)) {
+         ConsensusResult consensus = GetConsensus();
+         if(consensus.hasConsensus) {
+            ExecuteConsensusTrade(consensus);
+         }
+      }
+      return;
+   }
+
    if(IsAggressiveMode()) {
       // === AGGRESSIVE MODE LOGIC (M1/M5) ===
       if(currentBarTime != lastAggressiveBarTime) {
@@ -137,9 +196,9 @@ void OnTick() {
          UpdateAggressiveModeCache();
          ScanAggressiveSwings();
       }
-      
+
       ManageOpenTrades();
-      
+
        if(IsWithinSession() && !IsSpreadHours() && IsSpreadOK() &&
           CountOpenTrades() < MathMin(MaxOpenTrades, AggressiveMaxTrades)) {
           CheckAggressiveEntries();
@@ -150,9 +209,9 @@ void OnTick() {
           lastBarTime = currentBarTime;
           ScanForZones();
        }
-       
+
        ManageOpenTrades();
-       
+
        if(IsWithinSession() && !IsSpreadHours() && IsSpreadOK() &&
           CountOpenTrades() < MaxOpenTrades) {
           CheckForEntries();
@@ -1130,6 +1189,294 @@ bool IsAllowedSymbol() {
       if(currentSymbol == sym) return true;
    }
    return false;
+}
+
+//+------------------------------------------------------------------+
+//| Agent 1: S&D Zone Trader - zone touch + candlestick pattern      |
+//+------------------------------------------------------------------+
+AgentResult Agent1_SnDZone(ENUM_TIMEFRAMES tf) {
+   AgentResult res;
+   res.vote = VOTE_NEUTRAL;
+   res.entry = 0; res.sl = 0; res.tp = 0; res.reason = "";
+
+   if(!Agent1_SnD) return res;
+
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double pipSize = GetPipSize();
+
+   int zoneType = CheckZoneTouch();
+   if(zoneType == 0) return res;
+
+   int patternSignal = CheckCandlestickPatterns(zoneType);
+   if(patternSignal == 0 || zoneType != patternSignal) return res;
+
+   SZone entryZone;
+   if(!GetEntryZone(zoneType, entryZone)) return res;
+
+   res.entry = (patternSignal == 1) ? ask : bid;
+   res.sl = (patternSignal == 1)
+      ? entryZone.bottom - (ExtraSLPips * pipSize)
+      : entryZone.top + (ExtraSLPips * pipSize);
+   res.tp = (patternSignal == 1)
+      ? FindNextStructureLevel(1, ask)
+      : FindNextStructureLevel(-1, bid);
+   if(res.tp == 0) res.tp = res.entry + (patternSignal == 1 ? 50 * pipSize : -50 * pipSize);
+   res.vote = (patternSignal == 1) ? VOTE_BUY : VOTE_SELL;
+   res.reason = (patternSignal == 1) ? "Demand zone + pattern" : "Supply zone + pattern";
+   return res;
+}
+
+//+------------------------------------------------------------------+
+//| Agent 2: Liquidity Sweep Trader                                  |
+//+------------------------------------------------------------------+
+AgentResult Agent2_LiquiditySweep(ENUM_TIMEFRAMES tf) {
+   AgentResult res;
+   res.vote = VOTE_NEUTRAL;
+   res.entry = 0; res.sl = 0; res.tp = 0; res.reason = "";
+
+   if(!Agent2_Sweep) return res;
+
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double pipSize = GetPipSize();
+
+   double sweptLevel; int sweepDirection;
+   if(!DetectLiquiditySweep(bid, ask, sweptLevel, sweepDirection)) return res;
+
+   double impulseHigh, impulseLow;
+   if(!DetectCHoSD(sweptLevel, sweepDirection, impulseHigh, impulseLow)) return res;
+
+   res.entry = (sweepDirection == 1) ? ask : bid;
+   res.sl = (sweepDirection == 1)
+      ? MathMin(sweptLevel, impulseLow) - (ExtraSLPips * pipSize)
+      : MathMax(sweptLevel, impulseHigh) + (ExtraSLPips * pipSize);
+
+   double tpTarget = FindNextLiquidityTarget(sweepDirection, res.entry);
+   res.tp = (tpTarget != 0) ? tpTarget : res.entry + (sweepDirection == 1 ? 40 * pipSize : -40 * pipSize);
+
+   res.vote = (sweepDirection == 1) ? VOTE_BUY : VOTE_SELL;
+   res.reason = (sweepDirection == 1) ? "Liquidity sweep low" : "Liquidity sweep high";
+   return res;
+}
+
+//+------------------------------------------------------------------+
+//| Agent 3: FVG + Fib Retracement Trader                            |
+//+------------------------------------------------------------------+
+AgentResult Agent3_FVGIFVGFib(ENUM_TIMEFRAMES tf) {
+   AgentResult res;
+   res.vote = VOTE_NEUTRAL;
+   res.entry = 0; res.sl = 0; res.tp = 0; res.reason = "";
+
+   if(!Agent3_FVGFib) return res;
+
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double pipSize = GetPipSize();
+
+   double sweptLevel; int sweepDirection;
+   if(!DetectLiquiditySweep(bid, ask, sweptLevel, sweepDirection)) return res;
+
+   double impulseHigh, impulseLow;
+   if(!DetectCHoSD(sweptLevel, sweepDirection, impulseHigh, impulseLow)) return res;
+
+   double fibStart = sweptLevel;
+   double fibEnd = (sweepDirection == 1) ? impulseHigh : impulseLow;
+   double fibRange = MathAbs(fibEnd - fibStart);
+   if(fibRange < AggressiveImpulsePips * pipSize * 2) return res;
+
+   double entryPrice, fvgTop, fvgBottom;
+   if(!FindIFVGNearFib(sweepDirection, fibStart, fibEnd, entryPrice, fvgTop, fvgBottom)) return res;
+
+   double currentPrice = (sweepDirection == 1) ? bid : ask;
+   if(MathAbs(currentPrice - entryPrice) > pipSize * 2) return res;
+
+   if(sweepDirection == 1 && entryPrice < fvgBottom - pipSize) return res;
+   if(sweepDirection == -1 && entryPrice > fvgTop + pipSize) return res;
+
+   res.entry = entryPrice;
+   res.sl = (sweepDirection == 1)
+      ? MathMin(sweptLevel, fvgBottom) - (ExtraSLPips * pipSize)
+      : MathMax(sweptLevel, fvgTop) + (ExtraSLPips * pipSize);
+
+   double tpTarget = FindNextLiquidityTarget(sweepDirection, entryPrice);
+   res.tp = (tpTarget != 0) ? tpTarget : entryPrice + (sweepDirection == 1 ? 40 * pipSize : -40 * pipSize);
+
+   res.vote = (sweepDirection == 1) ? VOTE_BUY : VOTE_SELL;
+   res.reason = (sweepDirection == 1) ? "IFVG at fib level" : "FVG at fib level";
+   return res;
+}
+
+//+------------------------------------------------------------------+
+//| Agent 4: Momentum Breaker - consecutive impulsive candles        |
+//+------------------------------------------------------------------+
+AgentResult Agent4_Momentum(ENUM_TIMEFRAMES tf) {
+   AgentResult res;
+   res.vote = VOTE_NEUTRAL;
+   res.entry = 0; res.sl = 0; res.tp = 0; res.reason = "";
+
+   if(!Agent4_Momentum) return res;
+
+   double pipSize = GetPipSize();
+   double minBody = pipSize * 10;
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   int bullCount = 0, bearCount = 0;
+
+   for(int i = 1; i <= 5; i++) {
+      double open = iOpen(_Symbol, tf, i);
+      double close = iClose(_Symbol, tf, i);
+      double body = MathAbs(close - open);
+      if(body < minBody) { bullCount = 0; bearCount = 0; continue; }
+      if(close > open) { bullCount++; bearCount = 0; }
+      else { bearCount++; bullCount = 0; }
+      if(bullCount >= 3 || bearCount >= 3) break;
+   }
+
+   if(bullCount >= 3) {
+      res.vote = VOTE_BUY; res.entry = ask;
+      res.sl = ask - (20 * pipSize); res.tp = ask + (40 * pipSize);
+      res.reason = "3+ bullish impulse candles";
+   } else if(bearCount >= 3) {
+      res.vote = VOTE_SELL; res.entry = bid;
+      res.sl = bid + (20 * pipSize); res.tp = bid - (40 * pipSize);
+      res.reason = "3+ bearish impulse candles";
+   }
+   return res;
+}
+
+//+------------------------------------------------------------------+
+//| Agent 5: HTF Trend Follower - 200 EMA slope                      |
+//+------------------------------------------------------------------+
+AgentResult Agent5_Trend(ENUM_TIMEFRAMES tf) {
+   AgentResult res;
+   res.vote = VOTE_NEUTRAL;
+   res.entry = 0; res.sl = 0; res.tp = 0; res.reason = "";
+
+   if(!Agent5_Trend) return res;
+
+   double pipSize = GetPipSize();
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   int emaHandle = iMA(_Symbol, tf, 200, 0, MODE_EMA, PRICE_CLOSE);
+   if(emaHandle == INVALID_HANDLE) return res;
+
+   double ema[3];
+   if(CopyBuffer(emaHandle, 0, 0, 3, ema) < 3) return res;
+
+   bool uptrend = (bid > ema[0] && ema[0] > ema[1]);
+   bool downtrend = (bid < ema[0] && ema[0] < ema[1]);
+
+   if(uptrend) {
+      res.vote = VOTE_BUY; res.entry = ask;
+      res.sl = ema[0] - (5 * pipSize); res.tp = ask + (30 * pipSize);
+      res.reason = "HTF uptrend (price > 200 EMA)";
+   } else if(downtrend) {
+      res.vote = VOTE_SELL; res.entry = bid;
+      res.sl = ema[0] + (5 * pipSize); res.tp = bid - (30 * pipSize);
+      res.reason = "HTF downtrend (price < 200 EMA)";
+   }
+   return res;
+}
+
+//+------------------------------------------------------------------+
+//| Get consensus from all agents                                    |
+//+------------------------------------------------------------------+
+ConsensusResult GetConsensus() {
+   ConsensusResult result;
+   result.hasConsensus = false;
+   result.direction = 0;
+   result.entry = 0; result.sl = 0; result.tp = 0;
+   result.agreeCount = 0; result.agentsSummary = "";
+
+   ENUM_TIMEFRAMES tf = IsAggressiveMode() ? AggressiveTimeframe : PERIOD_H1;
+   AgentResult agents[5];
+   agents[0] = Agent1_SnDZone(tf);
+   agents[1] = Agent2_LiquiditySweep(tf);
+   agents[2] = Agent3_FVGIFVGFib(tf);
+   agents[3] = Agent4_Momentum(tf);
+   agents[4] = Agent5_Trend(tf);
+
+   int buyVotes = 0, sellVotes = 0;
+   double buyEntry = 0, sellEntry = 0, buySL = 0, sellSL = 0, buyTP = 0, sellTP = 0;
+   int buyCount = 0, sellCount = 0;
+   string as[] = {"A1","A2","A3","A4","A5"};
+
+   for(int i = 0; i < 5; i++) {
+      if(agents[i].vote == VOTE_BUY) {
+         buyVotes++;
+         buyEntry += agents[i].entry;
+         if(buyCount == 0 || agents[i].sl > buySL) buySL = agents[i].sl;
+         buyTP += agents[i].tp;
+         buyCount++;
+         result.agentsSummary += as[i] + ":BUY ";
+         if(agents[i].reason != "") result.agentsSummary += "(" + agents[i].reason + ") ";
+      } else if(agents[i].vote == VOTE_SELL) {
+         sellVotes++;
+         sellEntry += agents[i].entry;
+         if(sellCount == 0 || agents[i].sl < sellSL) sellSL = agents[i].sl;
+         sellTP += agents[i].tp;
+         sellCount++;
+         result.agentsSummary += as[i] + ":SELL ";
+         if(agents[i].reason != "") result.agentsSummary += "(" + agents[i].reason + ") ";
+      }
+   }
+
+   if(buyVotes >= MinAgreeCount && buyVotes > sellVotes) {
+      result.hasConsensus = true; result.direction = 1;
+      result.entry = buyEntry / buyCount;
+      result.sl = buySL; result.tp = buyTP / buyCount;
+      result.agreeCount = buyVotes;
+   } else if(sellVotes >= MinAgreeCount && sellVotes > buyVotes) {
+      result.hasConsensus = true; result.direction = -1;
+      result.entry = sellEntry / sellCount;
+      result.sl = sellSL; result.tp = sellTP / sellCount;
+      result.agreeCount = sellVotes;
+   }
+   return result;
+}
+
+//+------------------------------------------------------------------+
+//| Execute trade based on consensus                                 |
+//+------------------------------------------------------------------+
+void ExecuteConsensusTrade(ConsensusResult &consensus) {
+   if(!consensus.hasConsensus) return;
+
+   double pipSize = GetPipSize();
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+
+   double slDistance = (consensus.direction == 1)
+      ? (consensus.entry - consensus.sl) / pipSize
+      : (consensus.sl - consensus.entry) / pipSize;
+   if(slDistance < 5) return;
+
+   double lotSize = IsAggressiveMode()
+      ? CalculateAggressiveLotSize(slDistance)
+      : CalculateLotSize(slDistance);
+
+   double sl = NormalizeDouble(consensus.sl, digits);
+   double tp = NormalizeDouble(consensus.tp, digits);
+   lotSize = NormalizeDouble(lotSize, 2);
+
+   if(consensus.direction == 1) {
+      if(trade.Buy(lotSize, _Symbol, ask, sl, tp,
+         "BigDogsFX Agreed Buy")) {
+         Print("CONSENSUS BUY | Agents: ", consensus.agreeCount,
+               " | Votes: ", consensus.agentsSummary,
+               " | Lot: ", lotSize, " | Entry: ", consensus.entry,
+               " | SL: ", sl, " | TP: ", tp);
+      }
+   } else {
+      if(trade.Sell(lotSize, _Symbol, bid, sl, tp,
+         "BigDogsFX Agreed Sell")) {
+         Print("CONSENSUS SELL | Agents: ", consensus.agreeCount,
+               " | Votes: ", consensus.agentsSummary,
+               " | Lot: ", lotSize, " | Entry: ", consensus.entry,
+               " | SL: ", sl, " | TP: ", tp);
+      }
+   }
 }
 
 //+------------------------------------------------------------------+
