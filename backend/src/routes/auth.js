@@ -4,15 +4,20 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const otpService = require('../services/otpService');
+const authMiddleware = require('../middleware/auth');
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+};
+
+const generateRefreshToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
 router.post('/register', [
-  body('username').trim().isLength({ min: 3 }),
-  body('email').isEmail(),
-  body('password').isLength({ min: 6 })
+  body('username').trim().escape().isLength({ min: 3 }),
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 8 })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -33,7 +38,8 @@ router.post('/register', [
       _id: user._id,
       username: user.username,
       email: user.email,
-      token: generateToken(user._id)
+      token: generateToken(user._id),
+      refreshToken: generateRefreshToken(user._id)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -41,8 +47,8 @@ router.post('/register', [
 });
 
 router.post('/login', [
-  body('email').isEmail(),
-  body('password').exists()
+  body('email').isEmail().normalizeEmail(),
+  body('password').exists().trim()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -67,37 +73,35 @@ router.post('/login', [
       email: user.email,
       riskSettings: user.riskSettings,
       mt5Account: user.mt5Account,
-      token: generateToken(user._id)
+      token: generateToken(user._id),
+      refreshToken: generateRefreshToken(user._id)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-router.get('/profile', async (req, res) => {
+router.get('/profile', authMiddleware, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findById(req.userId).select('-password');
     
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     res.json(user);
   } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+    res.status(500).json({ message: error.message });
   }
 });
 
-router.put('/settings', async (req, res) => {
+router.put('/settings', authMiddleware, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
     const user = await User.findByIdAndUpdate(
-      decoded.id,
+      req.userId,
       { $set: req.body },
       { new: true }
     ).select('-password');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     res.json(user);
   } catch (error) {
@@ -152,30 +156,25 @@ router.post('/verify-otp', [
 });
 
 // Trading mode toggle
-router.get('/trading-mode', async (req, res) => {
+router.get('/trading-mode', authMiddleware, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('tradingMode');
+    const user = await User.findById(req.userId).select('tradingMode');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ tradingMode: user.tradingMode });
   } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+    res.status(500).json({ message: error.message });
   }
 });
 
-router.post('/trading-mode', async (req, res) => {
+router.post('/trading-mode', authMiddleware, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     const { mode } = req.body;
     if (!['normal', 'aggressive'].includes(mode)) {
       return res.status(400).json({ message: 'Mode must be normal or aggressive' });
     }
 
     const user = await User.findByIdAndUpdate(
-      decoded.id,
+      req.userId,
       { tradingMode: mode },
       { new: true }
     ).select('tradingMode');
@@ -197,30 +196,25 @@ router.post('/trading-mode', async (req, res) => {
 });
 
 // Multi-agent voting toggle
-router.get('/multi-agent-voting', async (req, res) => {
+router.get('/multi-agent-voting', authMiddleware, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('multiAgentVoting');
+    const user = await User.findById(req.userId).select('multiAgentVoting');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ enabled: user.multiAgentVoting });
   } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+    res.status(500).json({ message: error.message });
   }
 });
 
-router.post('/multi-agent-voting', async (req, res) => {
+router.post('/multi-agent-voting', authMiddleware, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     const { enabled } = req.body;
     if (typeof enabled !== 'boolean') {
       return res.status(400).json({ message: 'enabled must be boolean' });
     }
 
     const user = await User.findByIdAndUpdate(
-      decoded.id,
+      req.userId,
       { multiAgentVoting: enabled },
       { new: true }
     ).select('multiAgentVoting');
