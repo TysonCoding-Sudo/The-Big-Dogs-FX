@@ -3073,6 +3073,10 @@
                     renderDeviceList(devices || []);
                 });
 
+                socket.on('trade_update', (trade) => {
+                    loadJournal();
+                });
+
                 socket.on('disconnect', () => {
                     console.log('Socket disconnected');
                 });

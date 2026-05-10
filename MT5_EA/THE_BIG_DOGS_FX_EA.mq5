@@ -61,6 +61,11 @@ input int    AggressiveImpulsePips  = 15;   // Min impulse for CHoSD (pips)
 input int    AggressiveMaxTrades    = 2;    // Max trades in aggressive mode
 input double AggressiveMinRR        = 2.5;  // Min RR for aggressive trades
 
+input group "=== TRADE REPORTING ==="
+input string   BackendURL           = "http://localhost:5000"; // Backend server URL
+input string   EAApiKey             = "ChangeMeToARandomSecureString"; // EA API key for reporting
+input bool     EnableTradeReporting = true;   // Report trades to backend
+
 input group "=== SYMBOL FILTER ==="
 input string AllowedSymbols         = "NAS100,US30,XAUUSD"; // Comma-separated allowed symbols
 
@@ -76,6 +81,10 @@ input bool   Agent5_Trend          = true;      // Agent 5: HTF Trend Follower
 //--- Global Variables
 datetime lastBarTime = 0;
 int zoneCount = 0;
+
+//--- Trade Reporting Globals
+string reportedTickets[];    // Track which trades we've already reported open
+string webResponse = "";
 
 //--- Aggressive Mode Globals
 datetime lastAggressiveBarTime = 0;
@@ -707,39 +716,47 @@ void CheckForEntries() {
       tp = NormalizeDouble(tp, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
       lotSize = NormalizeDouble(lotSize, 2);
       
-      if(trade.Buy(lotSize, _Symbol, ask, sl, tp, "BigDogsFX Buy")) {
-         Print("BUY Order Placed | Lot: ", lotSize, " | SL: ", sl, " | TP: ", tp);
-      }
-      
-   } else if(patternSignal == -1) { // SELL
-      sl = entryZone.top + (ExtraSLPips * pipSize);
-      slDistance = (sl - bid) / pipSize;
-      
-      if(slDistance < 10) return;
-      
-      double lotSize = CalculateLotSize(slDistance);
-      
-      double structureTP = 0;
-      if(UseStructureTP) {
-         structureTP = FindNextStructureLevel(-1, bid);
-         double oppositeZoneTP = FindOppositeZoneLevel(-1, bid);
-         if(oppositeZoneTP > 0) structureTP = MathMax(structureTP, oppositeZoneTP);
-      }
-      
-      tp = structureTP > 0 ? structureTP : bid - (slDistance * MinRRRatio * pipSize);
-      tpDistance = (bid - tp) / pipSize;
-      
-      if(tpDistance / slDistance < MinRRRatio && structureTP > 0) {
-         tp = bid - (slDistance * MinRRRatio * pipSize);
-      }
-      
-      sl = NormalizeDouble(sl, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
-      tp = NormalizeDouble(tp, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
-      lotSize = NormalizeDouble(lotSize, 2);
-      
-      if(trade.Sell(lotSize, _Symbol, bid, sl, tp, "BigDogsFX Sell")) {
-         Print("SELL Order Placed | Lot: ", lotSize, " | SL: ", sl, " | TP: ", tp);
-      }
+       if(trade.Buy(lotSize, _Symbol, ask, sl, tp, "BigDogsFX Buy")) {
+          Print("BUY Order Placed | Lot: ", lotSize, " | SL: ", sl, " | TP: ", tp);
+          if(EnableTradeReporting) {
+             ulong ticket = GetLastPositionTicket();
+             ReportTradeOpen(ticket, _Symbol, "buy", lotSize, ask, sl, tp, "Normal Buy");
+          }
+       }
+       
+    } else if(patternSignal == -1) { // SELL
+       sl = entryZone.top + (ExtraSLPips * pipSize);
+       slDistance = (sl - bid) / pipSize;
+       
+       if(slDistance < 10) return;
+       
+       double lotSize = CalculateLotSize(slDistance);
+       
+       double structureTP = 0;
+       if(UseStructureTP) {
+          structureTP = FindNextStructureLevel(-1, bid);
+          double oppositeZoneTP = FindOppositeZoneLevel(-1, bid);
+          if(oppositeZoneTP > 0) structureTP = MathMax(structureTP, oppositeZoneTP);
+       }
+       
+       tp = structureTP > 0 ? structureTP : bid - (slDistance * MinRRRatio * pipSize);
+       tpDistance = (bid - tp) / pipSize;
+       
+       if(tpDistance / slDistance < MinRRRatio && structureTP > 0) {
+          tp = bid - (slDistance * MinRRRatio * pipSize);
+       }
+       
+       sl = NormalizeDouble(sl, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
+       tp = NormalizeDouble(tp, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
+       lotSize = NormalizeDouble(lotSize, 2);
+       
+       if(trade.Sell(lotSize, _Symbol, bid, sl, tp, "BigDogsFX Sell")) {
+          Print("SELL Order Placed | Lot: ", lotSize, " | SL: ", sl, " | TP: ", tp);
+          if(EnableTradeReporting) {
+             ulong ticket = GetLastPositionTicket();
+             ReportTradeOpen(ticket, _Symbol, "sell", lotSize, bid, sl, tp, "Normal Sell");
+          }
+       }
    }
 }
 
@@ -1185,23 +1202,31 @@ void CheckAggressiveEntries() {
    tp = NormalizeDouble(tp, digits);
    lotSize = NormalizeDouble(lotSize, 2);
    
-   if(sweepDirection == 1) {
-      if(trade.Buy(lotSize, _Symbol, ask, sl, tp,
-         "BigDogsFX Agg Buy")) {
-         Print("AGGRESSIVE BUY | Lot: ", lotSize,
-               " | Entry: ", entryPrice,
-               " | SL: ", sl, " | TP: ", tp,
-               " | Sweep: ", sweptLevel);
-      }
-   } else {
-      if(trade.Sell(lotSize, _Symbol, bid, sl, tp,
-         "BigDogsFX Agg Sell")) {
-         Print("AGGRESSIVE SELL | Lot: ", lotSize,
-               " | Entry: ", entryPrice,
-               " | SL: ", sl, " | TP: ", tp,
-               " | Sweep: ", sweptLevel);
-      }
-   }
+    if(sweepDirection == 1) {
+       if(trade.Buy(lotSize, _Symbol, ask, sl, tp,
+          "BigDogsFX Agg Buy")) {
+          Print("AGGRESSIVE BUY | Lot: ", lotSize,
+                " | Entry: ", entryPrice,
+                " | SL: ", sl, " | TP: ", tp,
+                " | Sweep: ", sweptLevel);
+          if(EnableTradeReporting) {
+             ulong ticket = GetLastPositionTicket();
+             ReportTradeOpen(ticket, _Symbol, "buy", lotSize, ask, sl, tp, "Aggressive Buy");
+          }
+       }
+    } else {
+       if(trade.Sell(lotSize, _Symbol, bid, sl, tp,
+          "BigDogsFX Agg Sell")) {
+          Print("AGGRESSIVE SELL | Lot: ", lotSize,
+                " | Entry: ", entryPrice,
+                " | SL: ", sl, " | TP: ", tp,
+                " | Sweep: ", sweptLevel);
+          if(EnableTradeReporting) {
+             ulong ticket = GetLastPositionTicket();
+             ReportTradeOpen(ticket, _Symbol, "sell", lotSize, bid, sl, tp, "Aggressive Sell");
+          }
+       }
+    }
 }
 
 //+------------------------------------------------------------------+
@@ -1490,23 +1515,31 @@ void ExecuteConsensusTrade(ConsensusResult &consensus) {
    double tp = NormalizeDouble(consensus.tp, digits);
    lotSize = NormalizeDouble(lotSize, 2);
 
-   if(consensus.direction == 1) {
-      if(trade.Buy(lotSize, _Symbol, ask, sl, tp,
-         "BigDogsFX Agreed Buy")) {
-         Print("CONSENSUS BUY | Agents: ", consensus.agreeCount,
-               " | Votes: ", consensus.agentsSummary,
-               " | Lot: ", lotSize, " | Entry: ", consensus.entry,
-               " | SL: ", sl, " | TP: ", tp);
-      }
-   } else {
-      if(trade.Sell(lotSize, _Symbol, bid, sl, tp,
-         "BigDogsFX Agreed Sell")) {
-         Print("CONSENSUS SELL | Agents: ", consensus.agreeCount,
-               " | Votes: ", consensus.agentsSummary,
-               " | Lot: ", lotSize, " | Entry: ", consensus.entry,
-               " | SL: ", sl, " | TP: ", tp);
-      }
-   }
+    if(consensus.direction == 1) {
+       if(trade.Buy(lotSize, _Symbol, ask, sl, tp,
+          "BigDogsFX Agreed Buy")) {
+          Print("CONSENSUS BUY | Agents: ", consensus.agreeCount,
+                " | Votes: ", consensus.agentsSummary,
+                " | Lot: ", lotSize, " | Entry: ", consensus.entry,
+                " | SL: ", sl, " | TP: ", tp);
+          if(EnableTradeReporting) {
+             ulong ticket = GetLastPositionTicket();
+             ReportTradeOpen(ticket, _Symbol, "buy", lotSize, ask, sl, tp, "Consensus Buy");
+          }
+       }
+    } else {
+       if(trade.Sell(lotSize, _Symbol, bid, sl, tp,
+          "BigDogsFX Agreed Sell")) {
+          Print("CONSENSUS SELL | Agents: ", consensus.agreeCount,
+                " | Votes: ", consensus.agentsSummary,
+                " | Lot: ", lotSize, " | Entry: ", consensus.entry,
+                " | SL: ", sl, " | TP: ", tp);
+          if(EnableTradeReporting) {
+             ulong ticket = GetLastPositionTicket();
+             ReportTradeOpen(ticket, _Symbol, "sell", lotSize, bid, sl, tp, "Consensus Sell");
+          }
+       }
+    }
 }
 
 //+------------------------------------------------------------------+
@@ -1560,6 +1593,206 @@ void ManageOpenTrades() {
             if(currentSL == 0 || newSL < currentSL - (5 * point)) {
                trade.PositionModify(ticket, NormalizeDouble(newSL, digits), currentTP);
             }
+         }
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| WebRequest helper - HTTP POST to backend                           |
+//+------------------------------------------------------------------+
+string WebRequestSend(const string endpoint, const string jsonStr) {
+   if(!EnableTradeReporting) return "";
+   if(BackendURL == "" || EAApiKey == "") return "";
+
+   string method = "POST";
+   string url = BackendURL + endpoint;
+   string headers = "Content-Type: application/json\r\nx-ea-api-key: " + EAApiKey + "\r\n";
+
+   char data[];
+   char resultData[];
+   StringToCharArray(jsonStr, data);
+
+   ResetLastError();
+   int res = WebRequest(method, url, headers, 5000, data, resultData);
+
+   if(res == -1) {
+      int err = GetLastError();
+      if(err != 0) Print("WebRequest error: ", err, " URL: ", url);
+      return "";
+   }
+
+   return CharArrayToString(resultData);
+}
+
+//+------------------------------------------------------------------+
+//| Report trade open to backend                                       |
+//+------------------------------------------------------------------+
+void ReportTradeOpen(const ulong ticket, const string symbol, const string typeCode,
+                     const double lotSize, const double entryPrice, const double sl,
+                     const double tp, const string comment) {
+   if(!EnableTradeReporting) return;
+   if(ticket == 0) return;
+
+   for(int i = 0; i < ArraySize(reportedTickets); i++) {
+      if(reportedTickets[i] == IntegerToString(ticket)) return;
+   }
+
+   int idx = ArraySize(reportedTickets);
+   ArrayResize(reportedTickets, idx + 1);
+   reportedTickets[idx] = IntegerToString(ticket);
+
+   MqlDateTime dt;
+   TimeCurrent(dt);
+   string session = "London";
+   if(dt.hour >= 13 && dt.hour < 22) session = "New York";
+   else if(dt.hour >= 3 && dt.hour < 11) session = "Asia";
+
+   string mode = IsAggressiveMode() ? "aggressive" : "normal";
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+
+   string jsonData = "{";
+   jsonData += "\"ticket\":\"" + IntegerToString(ticket) + "\",";
+   jsonData += "\"symbol\":\"" + symbol + "\",";
+   jsonData += "\"type\":\"" + typeCode + "\",";
+   jsonData += "\"lotSize\":" + DoubleToString(lotSize, 2) + ",";
+   jsonData += "\"entryPrice\":" + DoubleToString(entryPrice, digits) + ",";
+   jsonData += "\"sl\":" + DoubleToString(sl, digits) + ",";
+   jsonData += "\"tp\":" + DoubleToString(tp, digits) + ",";
+   jsonData += "\"status\":\"open\",";
+   jsonData += "\"session\":\"" + session + "\",";
+   jsonData += "\"adaptiveMode\":\"" + mode + "\"";
+   jsonData += "}";
+
+   string response = WebRequestSend("/api/trades/report", jsonData);
+   if(response != "") {
+      Print("Trade reported: #", ticket, " ", symbol, " ", typeCode);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Report trade close to backend                                      |
+//+------------------------------------------------------------------+
+void ReportTradeClose(const ulong ticket, const double exitPrice,
+                      const double pips, const double moneyMade,
+                      const string resultReason) {
+   if(!EnableTradeReporting) return;
+   if(ticket == 0) return;
+
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+
+   string jsonData = "{";
+   jsonData += "\"ticket\":\"" + IntegerToString(ticket) + "\",";
+   jsonData += "\"symbol\":\"" + _Symbol + "\",";
+   jsonData += "\"exitPrice\":" + DoubleToString(exitPrice, digits) + ",";
+   jsonData += "\"pips\":" + DoubleToString(pips, 1) + ",";
+   jsonData += "\"moneyMade\":" + DoubleToString(moneyMade, 2) + ",";
+   jsonData += "\"status\":\"closed\",";
+   jsonData += "\"resultReason\":\"" + resultReason + "\"";
+   jsonData += "}";
+
+   string response = WebRequestSend("/api/trades/report", jsonData);
+   if(response != "") {
+      Print("Trade close reported: #", ticket, " - ", resultReason);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Report trade SL/TP update to backend                               |
+//+------------------------------------------------------------------+
+void ReportTradeUpdate(const ulong ticket, const double newSL, const double newTP) {
+   if(!EnableTradeReporting) return;
+   if(ticket == 0) return;
+
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+
+   string jsonData = "{";
+   jsonData += "\"ticket\":\"" + IntegerToString(ticket) + "\",";
+   jsonData += "\"symbol\":\"" + _Symbol + "\",";
+   jsonData += "\"sl\":" + DoubleToString(newSL, digits) + ",";
+   jsonData += "\"tp\":" + DoubleToString(newTP, digits) + ",";
+   jsonData += "\"status\":\"open\"";
+   jsonData += "}";
+
+   string response = WebRequestSend("/api/trades/report", jsonData);
+   if(response != "") {
+      Print("Trade update reported: #", ticket);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Get most recent position ticket for our EA                         |
+//+------------------------------------------------------------------+
+ulong GetLastPositionTicket() {
+   ulong latestTicket = 0;
+   datetime latestTime = 0;
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--) {
+      ulong ticket = PositionGetTicket(i);
+      if(PositionSelectByTicket(ticket)) {
+         if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
+            PositionGetInteger(POSITION_MAGIC) == MagicNumber) {
+            datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+            if(openTime > latestTime) {
+               latestTime = openTime;
+               latestTicket = ticket;
+            }
+         }
+      }
+   }
+   return latestTicket;
+}
+
+//+------------------------------------------------------------------+
+//| Trade transaction event - detects closes and modifications         |
+//+------------------------------------------------------------------+
+void OnTradeTransaction(const MqlTradeTransaction &trans,
+                        const MqlTradeRequest &request,
+                        const MqlTradeResult &result) {
+   if(!EnableTradeReporting) return;
+
+   if(trans.type == TRADE_TRANSACTION_DEAL_ADD) {
+      ulong dealTicket = trans.deal;
+      if(dealTicket == 0) return;
+
+      if(HistoryDealSelect(dealTicket)) {
+         string dealSymbol = HistoryDealGetString(dealTicket, DEAL_SYMBOL);
+         if(dealSymbol != _Symbol) return;
+
+         long entryType = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
+         if(entryType == 1 || entryType == 2) {
+            ulong positionId = HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID);
+            double profit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+            double swap = HistoryDealGetDouble(dealTicket, DEAL_SWAP);
+            double commission = HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
+            double volume = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
+            double price = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
+
+            double totalProfit = profit + swap + commission;
+            double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+            double pipSize = GetPipSize();
+            double pips = 0;
+            if(tickValue > 0 && volume > 0) {
+               pips = totalProfit / (volume * tickValue / pipSize);
+            }
+
+            string reason = "Stop Loss";
+            if(totalProfit > 0) reason = "Take Profit";
+            if(entryType == 2) reason = "Reverse";
+
+            ReportTradeClose(positionId, price, pips, totalProfit, reason);
+         }
+      }
+   }
+
+   if(trans.type == TRADE_TRANSACTION_MODIFY) {
+      ulong positionTicket = trans.position;
+      if(positionTicket > 0 && PositionSelectByTicket(positionTicket)) {
+         if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
+            PositionGetInteger(POSITION_MAGIC) == MagicNumber) {
+            double newSL = PositionGetDouble(POSITION_SL);
+            double newTP = PositionGetDouble(POSITION_TP);
+            ReportTradeUpdate(positionTicket, newSL, newTP);
          }
       }
    }
