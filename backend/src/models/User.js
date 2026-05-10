@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   tradingMode: { type: String, enum: ['normal', 'aggressive'], default: 'normal' },
   multiAgentVoting: { type: Boolean, default: false },
+  eaActive: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 }, {
   timestamps: true

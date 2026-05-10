@@ -691,6 +691,47 @@
             color: #00dfff;
             text-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
         }
+        .dashboard.god-mode .session-tracker {
+            border-color: rgba(0, 150, 255, 0.15);
+            box-shadow: var(--shadow-card), 0 0 30px rgba(0, 120, 255, 0.1);
+        }
+        .dashboard.god-mode .session-item.active {
+            border-color: rgba(0, 150, 255, 0.35);
+            background: rgba(0, 100, 255, 0.1);
+            box-shadow: 0 0 30px rgba(0, 120, 255, 0.15);
+        }
+        .dashboard.god-mode .session-item.active .session-dot {
+            background: #00dfff;
+            box-shadow: 0 0 12px rgba(0, 180, 255, 0.6);
+        }
+        .dashboard.god-mode .session-status.open {
+            background: rgba(0, 150, 255, 0.15);
+            color: #00dfff;
+        }
+        .dashboard.god-mode .market-status.open {
+            background: rgba(0, 150, 255, 0.15);
+            color: #00dfff;
+        }
+        .dashboard.god-mode .calendar-header {
+            border-color: rgba(0, 150, 255, 0.1);
+        }
+        .dashboard.god-mode .ea-toggle-card.active {
+            border-color: rgba(0, 150, 255, 0.35);
+            box-shadow: var(--shadow-card), 0 0 60px rgba(0, 120, 255, 0.25);
+        }
+        .dashboard.god-mode .ea-toggle-card.active::before {
+            background: linear-gradient(90deg, transparent, #00dfff, transparent);
+        }
+        .dashboard.god-mode .ea-status-badge.on {
+            background: rgba(0, 120, 255, 0.2);
+            color: #00dfff;
+            border-color: rgba(0, 150, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 120, 255, 0.3);
+        }
+        .dashboard.god-mode .ea-switch input:checked + .ea-slider {
+            background: #00bfff;
+            box-shadow: 0 0 16px rgba(0, 150, 255, 0.5);
+        }
 
         .content {
             flex: 1;
@@ -1799,6 +1840,336 @@
             color: var(--text);
         }
 
+        /* === EA TOGGLE CARD === */
+        .ea-toggle-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .ea-toggle-card:hover {
+            border-color: rgba(255,255,255,0.1);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            transform: translateY(-2px);
+        }
+        .ea-toggle-card.active:hover {
+            border-color: rgba(0, 200, 83, 0.45);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 60px rgba(0, 200, 83, 0.25);
+        }
+        .ea-toggle-card.active {
+            border-color: rgba(0, 200, 83, 0.35);
+            box-shadow: var(--shadow-card), 0 0 60px rgba(0, 200, 83, 0.2);
+        }
+        .ea-toggle-card.active::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--success), transparent);
+        }
+        .ea-toggle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .ea-toggle-title {
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .ea-status-badge {
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+        .ea-status-badge.off {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-muted);
+        }
+        .ea-status-badge.on {
+            background: rgba(0, 200, 83, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(0, 200, 83, 0.25);
+            box-shadow: 0 0 20px rgba(0, 200, 83, 0.3);
+        }
+        .ea-toggle-body {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .ea-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: all 0.25s ease;
+        }
+        .ea-toggle-row:hover {
+            border-color: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+        }
+        .ea-toggle-card.active .ea-toggle-row:hover {
+            border-color: rgba(0, 200, 83, 0.2);
+            background: rgba(0, 200, 83, 0.04);
+        }
+        .ea-toggle-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+        .ea-switch {
+            position: relative;
+            width: 56px;
+            height: 30px;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .ea-switch:hover {
+            transform: scale(1.08);
+        }
+        .ea-switch:active {
+            transform: scale(0.95);
+        }
+        .ea-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .ea-slider {
+            position: absolute;
+            inset: 0;
+            background: var(--border);
+            border-radius: 30px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 0 0 rgba(0, 200, 83, 0);
+        }
+        .ea-switch:hover .ea-slider {
+            box-shadow: 0 0 0 4px rgba(0, 200, 83, 0.12);
+            background: #333;
+        }
+        .ea-switch:hover input:checked + .ea-slider {
+            box-shadow: 0 0 0 4px rgba(0, 200, 83, 0.2), 0 0 20px rgba(0, 200, 83, 0.4);
+        }
+        .ea-slider::before {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 3px;
+            width: 24px;
+            height: 24px;
+            background: var(--text);
+            border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .ea-switch:hover .ea-slider::before {
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        .ea-switch input:checked + .ea-slider {
+            background: var(--success);
+            box-shadow: 0 0 16px rgba(0, 200, 83, 0.5);
+        }
+        .ea-switch:hover input:checked + .ea-slider::before {
+            background: #fff;
+        }
+        .ea-switch input:checked + .ea-slider::before {
+            transform: translateX(26px);
+            background: #0a0a0a;
+        }
+        .ea-profit-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 10px 14px;
+            background: rgba(0, 200, 83, 0.04);
+            border: 1px solid rgba(0, 200, 83, 0.1);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            transition: all 0.25s ease;
+        }
+        .ea-profit-row:hover {
+            border-color: rgba(0, 200, 83, 0.2);
+            background: rgba(0, 200, 83, 0.07);
+        }
+        .ea-profit-label { color: var(--text-muted); font-weight: 500; }
+        .ea-profit-value { font-weight: 800; color: var(--text); }
+        .ea-profit-value.reached { color: var(--success); }
+        .ea-profit-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--bg-input);
+            border-radius: 6px;
+            overflow: hidden;
+            min-width: 60px;
+        }
+        .ea-profit-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), #00E676);
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+
+        .ea-target-reached-card {
+            padding: 16px;
+            background: rgba(0, 200, 83, 0.08);
+            border: 1px solid rgba(0, 200, 83, 0.25);
+            border-radius: var(--radius-md);
+            text-align: center;
+            margin-top: 12px;
+        }
+        .ea-target-reached-card .reached-text {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--success);
+            display: block;
+            margin-bottom: 6px;
+        }
+        .ea-target-reached-card .reached-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: block;
+            margin-bottom: 12px;
+        }
+        .ea-override-btn {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.25);
+            color: var(--primary);
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        .ea-override-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+        }
+
+        /* === GREEN GLOW - EA ACTIVE (6s duration) === */
+        .dashboard.ea-glow .header {
+            border-bottom-color: rgba(0, 200, 83, 0.3);
+            animation: glowGreenBorder 6s ease-in-out forwards;
+        }
+        .dashboard.ea-glow .tabs {
+            border-bottom-color: rgba(0, 200, 83, 0.2);
+            background: rgba(0, 80, 30, 0.12);
+        }
+        .dashboard.ea-glow .tab.active {
+            color: var(--success);
+            border-bottom-color: var(--success);
+        }
+        .dashboard.ea-glow .tab.active::after {
+            background: var(--success);
+            box-shadow: 0 0 24px rgba(0, 200, 83, 0.8);
+        }
+        .dashboard.ea-glow::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: radial-gradient(ellipse at 50% 0%, rgba(0, 200, 83, 0.3) 0%, rgba(0, 150, 50, 0.12) 30%, transparent 65%);
+            pointer-events: none;
+            animation: greenAmbient 6s ease-in-out forwards;
+        }
+        .dashboard.ea-glow::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: radial-gradient(ellipse at 30% 50%, rgba(0, 200, 83, 0.1) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 50%, rgba(0, 200, 83, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            animation: greenSideGlow 6s ease-in-out forwards;
+        }
+        @keyframes glowGreenBorder {
+            0% { border-bottom-color: rgba(0, 200, 83, 0.5); }
+            30% { border-bottom-color: rgba(0, 200, 83, 0.6); }
+            60% { border-bottom-color: rgba(0, 200, 83, 0.3); }
+            100% { border-bottom-color: rgba(0, 200, 83, 0); }
+        }
+        @keyframes greenAmbient {
+            0% { opacity: 1; }
+            60% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
+        @keyframes greenSideGlow {
+            0% { opacity: 1; }
+            60% { opacity: 0.6; }
+            100% { opacity: 0; }
+        }
+
+        /* === LETS MAKE MONEY OVERLAY === */
+        .lets-make-money-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        .lets-make-money-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .lets-make-money-card {
+            text-align: center;
+            padding: 50px 60px;
+            background: rgba(0, 20, 0, 0.9);
+            border: 2px solid rgba(0, 200, 83, 0.5);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 0 80px rgba(0, 200, 83, 0.3), 0 0 160px rgba(0, 200, 83, 0.15), inset 0 0 60px rgba(0, 200, 83, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        .lets-make-money-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--success), transparent);
+            animation: greenBarPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes greenBarPulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .lets-make-money-text {
+            font-size: 48px;
+            font-weight: 900;
+            color: var(--success);
+            text-shadow: 0 0 40px rgba(0, 200, 83, 0.8), 0 0 120px rgba(0, 200, 83, 0.5), 0 0 200px rgba(0, 150, 50, 0.3);
+            letter-spacing: 6px;
+            animation: moneyPulse 1.2s ease-in-out infinite;
+        }
+        @keyframes moneyPulse {
+            0%, 100% { transform: scale(1); text-shadow: 0 0 40px rgba(0, 200, 83, 0.8), 0 0 120px rgba(0, 200, 83, 0.5); }
+            50% { transform: scale(1.05); text-shadow: 0 0 80px rgba(0, 200, 83, 1), 0 0 200px rgba(0, 200, 83, 0.7), 0 0 300px rgba(0, 150, 50, 0.4); }
+        }
+
         @media (min-width: 768px) {
             .login-card { padding: 44px 40px; }
             .brand { font-size: 38px; }
@@ -2088,6 +2459,37 @@
                         <div class="stat-card">
                             <div class="stat-value" id="statTotal" style="color: var(--text-secondary)">--</div>
                             <div class="stat-label">Total Trades</div>
+                        </div>
+                    </div>
+
+                    <!-- EA Toggle Card -->
+                    <div class="ea-toggle-card" id="eaToggleCard">
+                        <div class="ea-toggle-header">
+                            <span class="ea-toggle-title">&#x26A1; EA Control</span>
+                            <span class="ea-status-badge off" id="eaStatusBadge">OFF</span>
+                        </div>
+                        <div class="ea-toggle-body" id="eaToggleBody">
+                            <div class="ea-toggle-row">
+                                <span class="ea-toggle-label">&#x1F4A1; Activate EA</span>
+                                <label class="ea-switch">
+                                    <input type="checkbox" id="eaToggle" onchange="handleEAToggle()">
+                                    <span class="ea-slider"></span>
+                                </label>
+                            </div>
+                            <div class="ea-profit-row">
+                                <span class="ea-profit-label">Daily Target:</span>
+                                <span class="ea-profit-value">R2,000</span>
+                                <div class="ea-profit-bar">
+                                    <div class="ea-profit-fill" id="eaProfitFill" style="width:0%"></div>
+                                </div>
+                                <span class="ea-profit-label">Today:</span>
+                                <span class="ea-profit-value" id="eaTodayProfit">R0.00</span>
+                            </div>
+                        </div>
+                        <div class="ea-target-reached-card" id="eaTargetReached" style="display:none">
+                            <span class="reached-text">&#x1F3C6; Daily Target of R2,000 Reached!</span>
+                            <span class="reached-sub">EA has been automatically deactivated.</span>
+                            <button class="ea-override-btn" onclick="overrideTarget()">Tap to Override &amp; Reactivate</button>
                         </div>
                     </div>
 
@@ -2482,6 +2884,12 @@
         let generatedOTP = '';
         let resendTimerInterval = null;
 
+        // ===== EA STATE =====
+        let eaActive = false;
+        let dailyProfitReached = false;
+        const DAILY_PROFIT_TARGET = 2000;
+        let eaProfitCheckInterval = null;
+
         // ===== BROKER SELECTION =====
         const BROKER_URLS = {
             ifx: 'https://www.ifxbrokers.com',
@@ -2706,6 +3114,8 @@
             }
 
             Promise.all([loadTradingMode(), loadAgentVoting()]).then(() => updateGodMode());
+            loadEAStatus();
+            runPeriodicProfitCheck();
             updateMarketSessions();
             setInterval(updateMarketSessions, 1000);
 
@@ -2872,6 +3282,168 @@
             if (banner) banner.classList.toggle('show', godMode);
             if (dashboard) dashboard.classList.toggle('god-mode', godMode);
         }
+        // ===== EA TOGGLE =====
+        async function loadEAStatus() {
+            try {
+                const token = localStorage.getItem('userToken');
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const response = await fetch(API_URL + '/auth/ea-status', { headers });
+                const data = await response.json();
+                eaActive = data.eaActive || false;
+                const todayProfit = data.todayProfit || 0;
+                dailyProfitReached = todayProfit >= DAILY_PROFIT_TARGET;
+                updateEAUI(todayProfit);
+                if (dailyProfitReached) handleTargetReached();
+            } catch {
+                eaActive = false;
+                dailyProfitReached = false;
+                updateEAUI(0);
+            }
+        }
+
+        function updateEAUI(todayProfit) {
+            const toggle = document.getElementById('eaToggle');
+            const card = document.getElementById('eaToggleCard');
+            const badge = document.getElementById('eaStatusBadge');
+            const fill = document.getElementById('eaProfitFill');
+            const profitEl = document.getElementById('eaTodayProfit');
+            const toggleBody = document.getElementById('eaToggleBody');
+            const targetCard = document.getElementById('eaTargetReached');
+
+            if (toggle) toggle.checked = eaActive;
+            if (card) card.className = 'ea-toggle-card' + (eaActive ? ' active' : '');
+            if (badge) {
+                badge.textContent = eaActive ? 'ACTIVE' : 'OFF';
+                badge.className = 'ea-status-badge ' + (eaActive ? 'on' : 'off');
+            }
+            if (profitEl) {
+                const val = todayProfit || 0;
+                profitEl.textContent = `R${val.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                profitEl.className = 'ea-profit-value' + (dailyProfitReached ? ' reached' : '');
+            }
+            if (fill) {
+                const pct = Math.min(100, ((todayProfit || 0) / DAILY_PROFIT_TARGET) * 100);
+                fill.style.width = pct + '%';
+            }
+
+            // Show toggle body or target reached card
+            if (dailyProfitReached) {
+                if (toggleBody) toggleBody.style.display = 'none';
+                if (targetCard) targetCard.style.display = 'block';
+            } else {
+                if (toggleBody) toggleBody.style.display = 'flex';
+                if (targetCard) targetCard.style.display = 'none';
+            }
+        }
+
+        async function handleEAToggle() {
+            const toggle = document.getElementById('eaToggle');
+            const newState = toggle.checked;
+            eaActive = newState;
+            dailyProfitReached = false;
+            updateEAUI(parseFloat(document.getElementById('eaTodayProfit')?.textContent?.replace('R', '')?.replace(',', '') || '0'));
+
+            if (newState) {
+                triggerGreenGlow();
+                showLetsMakeMoney();
+            }
+
+            try {
+                const token = localStorage.getItem('userToken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                };
+                await fetch(API_URL + '/auth/ea-status', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ eaActive: newState })
+                });
+            } catch {
+                // Offline mode - toggle works locally
+            }
+        }
+
+        function triggerGreenGlow() {
+            const dashboard = document.querySelector('.dashboard');
+            if (!dashboard) return;
+
+            dashboard.classList.add('ea-glow');
+
+            // Remove the glow class after 6 seconds
+            setTimeout(() => {
+                dashboard.classList.remove('ea-glow');
+            }, 6000);
+        }
+
+        function showLetsMakeMoney() {
+            const overlay = document.getElementById('letsMakeMoneyOverlay');
+            if (!overlay) return;
+
+            overlay.style.display = 'flex';
+            requestAnimationFrame(() => {
+                overlay.classList.add('show');
+            });
+
+            setTimeout(() => {
+                overlay.classList.remove('show');
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 400);
+            }, 5000);
+        }
+
+        async function checkDailyProfit() {
+            if (!session || !session.verified) return;
+            try {
+                const token = localStorage.getItem('userToken');
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const response = await fetch(API_URL + '/auth/ea-status', { headers });
+                const data = await response.json();
+                const todayProfit = data.todayProfit || 0;
+                const wasReached = dailyProfitReached;
+                dailyProfitReached = todayProfit >= DAILY_PROFIT_TARGET;
+
+                if (dailyProfitReached && !wasReached) {
+                    handleTargetReached();
+                }
+
+                updateEAUI(todayProfit);
+            } catch {
+                // Offline - skip
+            }
+        }
+
+        async function handleTargetReached() {
+            // Auto-turn off EA
+            eaActive = false;
+            const toggle = document.getElementById('eaToggle');
+            if (toggle) toggle.checked = false;
+
+            try {
+                const token = localStorage.getItem('userToken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                };
+                await fetch(API_URL + '/auth/ea-status', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ eaActive: false })
+                });
+            } catch {}
+        }
+
+        function overrideTarget() {
+            dailyProfitReached = false;
+            updateEAUI(parseFloat(document.getElementById('eaTodayProfit')?.textContent?.replace('R', '')?.replace(',', '') || '0'));
+        }
+
+        function runPeriodicProfitCheck() {
+            if (eaProfitCheckInterval) clearInterval(eaProfitCheckInterval);
+            eaProfitCheckInterval = setInterval(checkDailyProfit, 30000);
+        }
+
         // ===== DEPOSITS =====
         let deposits = [];
         const INITIAL_DEPOSIT = 300;
@@ -3759,6 +4331,13 @@
                 <span class="bot-dot"></span>
                 <span class="bot-dot"></span>
             </div>
+        </div>
+    </div>
+
+    <!-- LETS MAKE MONEY Overlay -->
+    <div id="letsMakeMoneyOverlay" class="lets-make-money-overlay">
+        <div class="lets-make-money-card">
+            <div class="lets-make-money-text">LETS MAKE MONEY</div>
         </div>
     </div>
 

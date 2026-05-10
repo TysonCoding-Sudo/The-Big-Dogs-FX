@@ -232,4 +232,53 @@ router.post('/multi-agent-voting', authMiddleware, async (req, res) => {
   }
 });
 
+// EA status toggle
+router.get('/ea-status', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('eaActive');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Calculate today's profit
+    const Trade = require('../models/Trade');
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayTrades = await Trade.find({
+      userId: req.userId,
+      exitTime: { $gte: todayStart }
+    });
+    const todayProfit = todayTrades.reduce((sum, t) => sum + (t.moneyMade || 0), 0);
+
+    res.json({ eaActive: user.eaActive, todayProfit, dailyTarget: 2000 });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/ea-status', authMiddleware, async (req, res) => {
+  try {
+    const { eaActive } = req.body;
+    if (typeof eaActive !== 'boolean') {
+      return res.status(400).json({ message: 'eaActive must be boolean' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { eaActive },
+      { new: true }
+    ).select('eaActive');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Propagate to MT5 bridge
+    try {
+      const mt5Bridge = require('../services/mt5Bridge');
+      await mt5Bridge.setEAStatus(eaActive);
+    } catch (e) {}
+
+    res.json({ eaActive: user.eaActive });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

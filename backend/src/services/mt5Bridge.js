@@ -18,6 +18,13 @@ function getAgentsFilePath() {
   return path.join(dir, 'BigDogsFX_Agents.cfg');
 }
 
+function getEAStatusFilePath() {
+  const appData = process.env.APPDATA || '';
+  if (!appData) return null;
+  const dir = path.join(appData, 'MetaQuotes', 'Terminal', 'Common', 'Files');
+  return path.join(dir, 'BigDogsFX_EA.cfg');
+}
+
 const mt5Bridge = {
   setIO(socketIO) {
     io = socketIO;
@@ -104,6 +111,31 @@ const mt5Bridge = {
     try {
       await axios.post('http://localhost:8080/api/command', {
         command: 'setMultiAgentVoting',
+        data: { enabled }
+      });
+    } catch {
+      // HTTP bridge may not be running
+    }
+  },
+
+  async setEAStatus(enabled) {
+    const filePath = getEAStatusFilePath();
+    if (filePath) {
+      try {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, `eaActive=${enabled ? '1' : '0'}`, 'utf8');
+        console.log(`EA status written to ${filePath}: ${enabled ? 'ON' : 'OFF'}`);
+      } catch (err) {
+        console.error('Failed to write EA status file:', err.message);
+      }
+    }
+
+    try {
+      await axios.post('http://localhost:8080/api/command', {
+        command: 'setEAStatus',
         data: { enabled }
       });
     } catch {
