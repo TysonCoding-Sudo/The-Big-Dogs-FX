@@ -11,6 +11,13 @@ function getModeFilePath() {
   return path.join(dir, 'BigDogsFX_Mode.cfg');
 }
 
+function getAgentsFilePath() {
+  const appData = process.env.APPDATA || '';
+  if (!appData) return null;
+  const dir = path.join(appData, 'MetaQuotes', 'Terminal', 'Common', 'Files');
+  return path.join(dir, 'BigDogsFX_Agents.cfg');
+}
+
 const mt5Bridge = {
   setIO(socketIO) {
     io = socketIO;
@@ -73,6 +80,31 @@ const mt5Bridge = {
       await axios.post('http://localhost:8080/api/command', {
         command: 'setTradingMode',
         data: { mode }
+      });
+    } catch {
+      // HTTP bridge may not be running
+    }
+  },
+
+  async setMultiAgentVoting(enabled) {
+    const filePath = getAgentsFilePath();
+    if (filePath) {
+      try {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, `agents=${enabled ? 'enabled' : 'disabled'}`, 'utf8');
+        console.log(`Agent voting written to ${filePath}: ${enabled}`);
+      } catch (err) {
+        console.error('Failed to write agents file:', err.message);
+      }
+    }
+
+    try {
+      await axios.post('http://localhost:8080/api/command', {
+        command: 'setMultiAgentVoting',
+        data: { enabled }
       });
     } catch {
       // HTTP bridge may not be running

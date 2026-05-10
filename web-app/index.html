@@ -1470,6 +1470,25 @@
             transition: all 0.3s ease;
         }
         .bot-dot.active { background: var(--primary); box-shadow: 0 0 12px rgba(255,215,0,0.5); }
+        .bot-skip {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 1;
+            font-family: inherit;
+        }
+        .bot-skip:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--text);
+        }
 
         @media (min-width: 768px) {
             .login-card { padding: 44px 40px; }
@@ -2856,18 +2875,39 @@
             }
         }
 
+        let botMessageTimer = null;
+        let botMessageOverlay = false;
+
+        function dismissBotOverlay(runComplete) {
+            const overlay = document.getElementById('botMessageOverlay');
+            if (botMessageTimer) { clearTimeout(botMessageTimer); botMessageTimer = null; }
+            botMessageOverlay = false;
+            overlay.classList.remove('show');
+            overlay.style.opacity = '0';
+            document.getElementById('botSkipBtn').style.display = 'none';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 600);
+            return runComplete;
+        }
+
+        function skipBotMessages() {
+            dismissBotOverlay();
+        }
+
         function showBotMessages(messages, onComplete) {
             const overlay = document.getElementById('botMessageOverlay');
             const text = document.getElementById('botMessageText');
             const dots = document.querySelectorAll('.bot-dot');
             let index = 0;
+            botMessageOverlay = true;
+            document.getElementById('botSkipBtn').style.display = 'block';
 
             function showNext() {
+                if (!botMessageOverlay) return;
                 if (index >= messages.length) {
-                    overlay.classList.remove('show');
-                    overlay.style.opacity = '0';
-                    setTimeout(() => {
-                        overlay.style.display = 'none';
+                    onComplete = dismissBotOverlay(onComplete);
+                    botMessageTimer = setTimeout(() => {
                         if (onComplete) onComplete();
                     }, 600);
                     return;
@@ -2884,10 +2924,10 @@
                     overlay.classList.add('show');
                 });
 
-                setTimeout(() => {
+                botMessageTimer = setTimeout(() => {
                     overlay.style.opacity = '0';
                     index++;
-                    setTimeout(showNext, 600);
+                    botMessageTimer = setTimeout(showNext, 600);
                 }, 8000);
             }
 
@@ -2964,6 +3004,7 @@
     <!-- Bot Message Overlay -->
     <div id="botMessageOverlay" class="bot-overlay">
         <div class="bot-message-card">
+            <button class="bot-skip" id="botSkipBtn" onclick="skipBotMessages()">Skip &#x2716;</button>
             <div class="bot-avatar">&#x1F916;</div>
             <div class="bot-message" id="botMessageText"></div>
             <div class="bot-dots" id="botDots">

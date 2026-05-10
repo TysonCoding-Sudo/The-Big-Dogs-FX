@@ -196,4 +196,46 @@ router.post('/trading-mode', async (req, res) => {
   }
 });
 
+// Multi-agent voting toggle
+router.get('/multi-agent-voting', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('multiAgentVoting');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ enabled: user.multiAgentVoting });
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+});
+
+router.post('/multi-agent-voting', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const { enabled } = req.body;
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ message: 'enabled must be boolean' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      decoded.id,
+      { multiAgentVoting: enabled },
+      { new: true }
+    ).select('multiAgentVoting');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    try {
+      const mt5Bridge = require('../services/mt5Bridge');
+      await mt5Bridge.setMultiAgentVoting(enabled);
+    } catch (e) {}
+
+    res.json({ enabled: user.multiAgentVoting });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

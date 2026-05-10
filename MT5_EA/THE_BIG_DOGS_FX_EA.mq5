@@ -81,6 +81,7 @@ int zoneCount = 0;
 datetime lastAggressiveBarTime = 0;
 datetime lastModeCheck = 0;
 bool cachedAggressiveMode = false;
+bool cachedAgentMode = false;
 double swingHighs[];
 double swingLows[];
 int swingCount = 0;
@@ -138,9 +139,9 @@ int OnInit() {
        Print("   AGGRESSIVE MODE ACTIVE - TF: ", EnumToString(AggressiveTimeframe));
        Print("   Agg Risk: ", AggressiveRiskPercent, "% | Impulse: ", AggressiveImpulsePips, " pips");
     }
-    if(UseMultiAgentVoting) {
-       Print("   MULTI-AGENT VOTING ACTIVE - MinAgree: ", MinAgreeCount);
-    }
+     if(IsAgentModeEnabled()) {
+        Print("   MULTI-AGENT VOTING ACTIVE - MinAgree: ", MinAgreeCount);
+     }
    Print("==============================================");
    
    return(INIT_SUCCEEDED);
@@ -162,17 +163,19 @@ void OnTick() {
    ENUM_TIMEFRAMES tf = IsAggressiveMode() ? AggressiveTimeframe : PERIOD_H1;
    datetime currentBarTime = iTime(_Symbol, tf, 0);
 
-   if(UseMultiAgentVoting) {
+   if(IsAgentModeEnabled()) {
       // === MULTI-AGENT VOTING (replaces both normal & aggressive) ===
       if(IsAggressiveMode()) {
          if(currentBarTime != lastAggressiveBarTime) {
             lastAggressiveBarTime = currentBarTime;
             UpdateAggressiveModeCache();
+            UpdateAgentModeCache();
             ScanAggressiveSwings();
          }
       } else {
          if(currentBarTime != lastBarTime) {
             lastBarTime = currentBarTime;
+            UpdateAgentModeCache();
             ScanForZones();
          }
       }
@@ -194,6 +197,7 @@ void OnTick() {
       if(currentBarTime != lastAggressiveBarTime) {
          lastAggressiveBarTime = currentBarTime;
          UpdateAggressiveModeCache();
+         UpdateAgentModeCache();
          ScanAggressiveSwings();
       }
 
@@ -207,6 +211,7 @@ void OnTick() {
        // === NORMAL MODE LOGIC (H1) ===
        if(currentBarTime != lastBarTime) {
           lastBarTime = currentBarTime;
+          UpdateAgentModeCache();
           ScanForZones();
        }
 
@@ -761,6 +766,31 @@ void UpdateAggressiveModeCache() {
       StringReplace(content, "\r", "");
       cachedAggressiveMode = (content == "mode=aggressive");
    }
+}
+
+//+------------------------------------------------------------------+
+//| Update agent voting cache from file on new bar                   |
+//+------------------------------------------------------------------+
+void UpdateAgentModeCache() {
+   int handle = FileOpen("BigDogsFX_Agents.cfg", FILE_TXT|FILE_READ|FILE_COMMON, 0);
+   if(handle != INVALID_HANDLE) {
+      string content = "";
+      while(!FileIsEnding(handle)) {
+         content += FileReadString(handle);
+      }
+      FileClose(handle);
+      StringReplace(content, "\n", "");
+      StringReplace(content, "\r", "");
+      cachedAgentMode = (content == "agents=enabled");
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Check if multi-agent voting is active                            |
+//+------------------------------------------------------------------+
+bool IsAgentModeEnabled() {
+   if(UseMultiAgentVoting) return true;
+   return cachedAgentMode;
 }
 
 //+------------------------------------------------------------------+
