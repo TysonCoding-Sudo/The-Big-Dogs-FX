@@ -1,0 +1,3019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>THE BIG DOGS FX</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #141414;
+            --bg-input: #1a1a1a;
+            --primary: #FFD700;
+            --primary-dark: #B8960C;
+            --success: #00C853;
+            --danger: #FF1744;
+            --text: #FFFFFF;
+            --text-secondary: #888888;
+            --text-muted: #555555;
+            --border: #2a2a2a;
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+            --glow-gold: 0 0 40px rgba(255, 215, 0, 0.15);
+            --glow-green: 0 0 40px rgba(0, 200, 83, 0.15);
+            --glow-red: 0 0 40px rgba(255, 23, 68, 0.15);
+            --shadow-card: 0 8px 32px rgba(0,0,0,0.4);
+            --shadow-elevated: 0 20px 60px rgba(0,0,0,0.6);
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .screen { display: none; min-height: 100vh; min-height: 100dvh; }
+        .screen.active { display: flex; flex-direction: column; }
+
+        #candleCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+        }
+        .bg-gradient {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(180deg, rgba(10,10,10,0.15) 0%, rgba(10,10,10,0.6) 50%, rgba(10,10,10,0.95) 100%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .login-card {
+            background: rgba(20, 20, 20, 0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: var(--radius-xl);
+            padding: 36px 28px;
+            width: 100%;
+            max-width: 440px;
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: var(--shadow-elevated), var(--glow-gold);
+            position: relative;
+            overflow: hidden;
+        }
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,215,0,0.4), transparent);
+        }
+        .brand {
+            font-size: 30px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), #FFE44D, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            letter-spacing: 4px;
+            text-shadow: none;
+            filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.3));
+        }
+        .slogan {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-align: center;
+            font-style: italic;
+            letter-spacing: 2px;
+            margin-top: 6px;
+            text-transform: uppercase;
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin: 24px 0 28px;
+        }
+        .step-dot {
+            width: 36px;
+            height: 4px;
+            border-radius: 4px;
+            background: var(--border);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .step-dot.active { background: var(--primary); width: 56px; box-shadow: 0 0 12px rgba(255,215,0,0.4); }
+        .step-dot.completed { background: var(--success); box-shadow: 0 0 12px rgba(0,200,83,0.3); }
+
+        .step-title {
+            font-size: 20px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 4px;
+            letter-spacing: -0.3px;
+        }
+        .step-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .search-wrapper {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .search-input {
+            width: 100%;
+            padding: 16px 16px 16px 48px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text);
+            font-size: 15px;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+        .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1); }
+        .search-input::placeholder { color: var(--text-muted); }
+
+        .broker-list {
+            max-height: 240px;
+            overflow-y: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+        }
+        .broker-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .broker-item:last-child { border-bottom: none; }
+        .broker-item:hover { background: rgba(255, 215, 0, 0.06); }
+        .broker-item.selected { background: rgba(255, 215, 0, 0.12); }
+        .broker-item.selected::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 4px; bottom: 4px;
+            width: 3px;
+            background: var(--primary);
+            border-radius: 0 3px 3px 0;
+            box-shadow: 0 0 12px rgba(255,215,0,0.5);
+        }
+
+        .broker-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.25);
+            border-radius: var(--radius-sm);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .broker-link:hover {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(255,215,0,0.15);
+        }
+
+        .broker-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: #1a1a1a;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            position: relative;
+        }
+        .broker-logo svg { width: 36px; height: 36px; }
+        .broker-info { flex: 1; min-width: 0; }
+        .broker-name { font-weight: 700; font-size: 15px; }
+        .broker-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+        .selected-broker {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.25);
+            border-radius: var(--radius-md);
+            margin-bottom: 24px;
+        }
+        .selected-broker .broker-logo { width: 48px; height: 48px; }
+        .selected-broker .broker-logo svg { width: 32px; height: 32px; }
+        .selected-broker .broker-name { font-size: 15px; }
+        .selected-broker-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: var(--radius-sm);
+            color: var(--primary);
+            font-size: 11px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .selected-broker-link:hover { background: rgba(255, 215, 0, 0.2); }
+        .change-broker {
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            background: none;
+            border: none;
+            flex-shrink: 0;
+            padding: 6px 8px;
+            border-radius: var(--radius-sm);
+            transition: background 0.2s;
+        }
+        .change-broker:hover { background: rgba(255, 215, 0, 0.1); }
+
+        .form-group { margin-top: 20px; }
+        .form-group:first-child { margin-top: 0; }
+        .form-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text);
+            font-size: 15px;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1); }
+        .form-group input::placeholder { color: var(--text-muted); }
+        .form-group select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23888' d='M7 9.5L2 4.5h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 44px;
+        }
+        .form-group select option { background: var(--bg-card); color: var(--text); }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--primary), #E6C200);
+            border: none;
+            border-radius: var(--radius-md);
+            color: #0a0a0a;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            cursor: pointer;
+            margin-top: 24px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent, rgba(255,255,255,0.15), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+        .btn:hover::after { transform: translateX(100%); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,215,0,0.3); }
+        .btn:active { transform: translateY(0); box-shadow: none; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            background: none;
+        }
+        .btn-outline::after { display: none; }
+        .btn-outline:hover { background: rgba(255, 215, 0, 0.08); box-shadow: 0 0 30px rgba(255,215,0,0.1); }
+        .btn-back {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 16px;
+            width: 100%;
+            padding: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+            border-radius: var(--radius-sm);
+        }
+        .btn-back:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+
+        .otp-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 28px 0;
+        }
+        .otp-input {
+            width: 52px;
+            height: 62px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 800;
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text);
+            outline: none;
+            transition: all 0.2s ease;
+            caret-color: var(--primary);
+        }
+        .otp-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1); transform: translateY(-2px); }
+        .otp-input:not(:placeholder-shown) { border-color: var(--primary); }
+        .otp-info {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        .otp-email {
+            color: var(--primary);
+            font-weight: 700;
+        }
+        .resend-otp {
+            text-align: center;
+            margin-top: 16px;
+        }
+        .resend-otp button {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            transition: background 0.2s;
+        }
+        .resend-otp button:hover:not(:disabled) { background: rgba(255,215,0,0.08); }
+        .resend-otp button:disabled { color: var(--text-muted); cursor: not-allowed; }
+        .resend-timer { color: var(--text-muted); font-size: 13px; }
+
+        .error-msg {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+            font-weight: 500;
+        }
+        .error-msg.show { display: block; }
+        .success-msg {
+            color: var(--success);
+            font-size: 13px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+            font-weight: 500;
+        }
+        .success-msg.show { display: block; }
+
+        .password-wrapper { position: relative; }
+        .password-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s;
+        }
+        .password-toggle:hover { color: var(--text); }
+
+        .dashboard {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .header-brand {
+            font-size: 22px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), #FFE44D);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 3px;
+        }
+        .header-slogan { font-size: 11px; color: var(--text-muted); font-style: italic; letter-spacing: 1px; margin-top: 2px; }
+        .logout-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 22px;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+        .logout-btn:hover { color: var(--primary); background: rgba(255,215,0,0.08); }
+        .user-bar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 18px 24px;
+            background: rgba(20, 20, 20, 0.4);
+        }
+        .user-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #0a0a0a;
+            font-size: 20px;
+            box-shadow: 0 0 20px rgba(255,215,0,0.2);
+            flex-shrink: 0;
+        }
+        .welcome-text { font-size: 18px; font-weight: 700; letter-spacing: -0.2px; }
+        .broker-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255,215,0,0.15);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-top: 4px;
+        }
+        .broker-badge svg { width: 16px; height: 16px; }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            background: rgba(20, 20, 20, 0.4);
+            padding: 0 4px;
+        }
+        .tab {
+            flex: 1;
+            padding: 16px 14px;
+            text-align: center;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.25s ease;
+            letter-spacing: 0.3px;
+            position: relative;
+        }
+        .tab:hover { color: var(--text-secondary); }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px;
+            box-shadow: 0 0 12px rgba(255,215,0,0.4);
+        }
+
+        .content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: var(--shadow-card);
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            border-radius: 2px 2px 0 0;
+        }
+        .stat-card:nth-child(1)::before { background: var(--success); box-shadow: var(--glow-green); }
+        .stat-card:nth-child(2)::before { background: var(--text); }
+        .stat-card:nth-child(3)::before { background: var(--primary); box-shadow: var(--glow-gold); }
+        .stat-card:nth-child(4)::before { background: var(--text-muted); }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+        .stat-value { font-size: 30px; font-weight: 900; letter-spacing: -1px; }
+        .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: var(--shadow-card);
+            margin-bottom: 20px;
+            transition: all 0.25s ease;
+        }
+        .card:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+        .card-title { font-size: 17px; font-weight: 800; margin-bottom: 16px; letter-spacing: -0.2px; }
+        .signal-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+        .signal-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 12px rgba(0,200,83,0.4);
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.85); } }
+        .signal-text { color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+
+        .info-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(255, 215, 0, 0.06);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            margin-bottom: 20px;
+            transition: all 0.25s ease;
+        }
+        .info-card:hover { border-color: rgba(255,215,0,0.25); box-shadow: var(--glow-gold); }
+        .info-icon { font-size: 24px; flex-shrink: 0; }
+        .info-text { color: var(--text-secondary); font-size: 13px; flex: 1; line-height: 1.5; }
+
+        .trade-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: var(--shadow-card);
+            margin-bottom: 14px;
+            transition: all 0.25s ease;
+        }
+        .trade-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        .trade-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .trade-symbol { font-size: 18px; font-weight: 800; }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+        .badge-buy { background: rgba(0, 200, 83, 0.15); color: var(--success); box-shadow: inset 0 0 20px rgba(0,200,83,0.05); }
+        .badge-sell { background: rgba(255, 23, 68, 0.15); color: var(--danger); box-shadow: inset 0 0 20px rgba(255,23,68,0.05); }
+        .trade-details { display: flex; justify-content: space-between; color: var(--text-secondary); font-size: 14px; }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .setting-item:last-child { border-bottom: none; }
+        .setting-label { color: var(--text-secondary); font-size: 14px; }
+        .setting-value { font-weight: 700; font-size: 14px; }
+
+        .empty-state { text-align: center; padding: 60px 20px; }
+        .empty-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.6; }
+        .empty-text { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .empty-subtext { color: var(--text-muted); font-size: 14px; }
+
+        .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(255,255,255,0.06);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .session-tracker {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: var(--shadow-card);
+            margin-bottom: 20px;
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .calendar-date, .calendar-time {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .cal-icon, .time-icon { font-size: 16px; opacity: 0.6; }
+        #currentDate { font-weight: 700; font-size: 14px; color: var(--text-secondary); }
+        #currentTime {
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--primary);
+            font-family: 'JetBrains Mono', 'SF Mono', monospace;
+            letter-spacing: 1px;
+        }
+        .time-zone {
+            font-size: 10px;
+            padding: 3px 8px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255,215,0,0.15);
+            border-radius: 20px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .weekend-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px;
+            background: rgba(255, 23, 68, 0.1);
+            border: 1px solid rgba(255, 23, 68, 0.25);
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            color: var(--danger);
+            font-weight: 800;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+        .weekend-icon { font-size: 16px; }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .session-title { font-size: 16px; font-weight: 800; }
+        .market-status {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+        .market-status.open { background: rgba(0, 200, 83, 0.15); color: var(--success); box-shadow: inset 0 0 20px rgba(0,200,83,0.05); }
+        .market-status.closed { background: rgba(255, 23, 68, 0.12); color: var(--danger); }
+
+        .countdown-section {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 215, 0, 0.04);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 215, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .countdown-label { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .countdown-timer {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--primary);
+            font-family: 'JetBrains Mono', 'SF Mono', monospace;
+            letter-spacing: 3px;
+            text-shadow: 0 0 30px rgba(255,215,0,0.2);
+        }
+
+        .sessions-list { display: flex; flex-direction: column; gap: 10px; }
+        .session-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: all 0.3s ease;
+        }
+        .session-item.active {
+            border-color: rgba(0, 200, 83, 0.3);
+            background: rgba(0, 200, 83, 0.06);
+            box-shadow: 0 0 30px rgba(0,200,83,0.05);
+        }
+        .session-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+            display: none;
+        }
+        .session-item.active .session-dot {
+            display: block;
+            background: var(--success);
+            animation: blinkDot 1.5s ease-in-out infinite;
+        }
+        @keyframes blinkDot {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 200, 83, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(0, 200, 83, 0); }
+        }
+        .session-flag {
+            font-size: 22px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .session-name { font-weight: 700; font-size: 14px; flex: 1; }
+        .session-time { font-size: 12px; color: var(--text-muted); font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+        .session-status {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+        }
+        .session-status.open { background: rgba(0, 200, 83, 0.15); color: var(--success); }
+        .session-status.closed { background: rgba(255, 23, 68, 0.12); color: var(--danger); }
+
+        .app-footer {
+            text-align: center;
+            padding: 24px;
+            margin-top: 12px;
+            color: var(--text-muted);
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        .app-footer .footer-name {
+            color: var(--primary);
+            font-weight: 700;
+            font-style: italic;
+        }
+
+        .journal-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .journal-money {
+            flex: 1;
+            min-width: 140px;
+            background: linear-gradient(135deg, rgba(0,200,83,0.12), rgba(0,200,83,0.03));
+            border: 1px solid rgba(0,200,83,0.25);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            text-align: center;
+        }
+        .money-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .money-value { font-size: 30px; font-weight: 900; color: var(--success); text-shadow: 0 0 20px rgba(0,200,83,0.2); }
+        .journal-pips {
+            flex: 1;
+            min-width: 140px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--shadow-card);
+        }
+        .pips-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .pips-value { font-size: 30px; font-weight: 900; color: var(--primary); }
+        .journal-mode {
+            flex: 1;
+            min-width: 140px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-card);
+        }
+        .mode-badge {
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+        .mode-badge.normal { background: rgba(255,215,0,0.12); color: var(--primary); border: 1px solid rgba(255,215,0,0.2); }
+        .mode-badge.aggressive { background: rgba(255,23,68,0.12); color: var(--danger); border: 1px solid rgba(255,23,68,0.2); }
+
+        .journal-filter {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 14px 18px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .journal-filter-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+        .journal-filter select {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .journal-filter select:focus { border-color: var(--primary); }
+        .journal-filter select option { background: var(--bg-card); }
+        .journal-days { font-size: 11px; color: var(--text-muted); white-space: nowrap; font-weight: 500; }
+
+        .journal-list { display: flex; flex-direction: column; gap: 16px; }
+
+        .trade-card-journal {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+        .trade-card-journal::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            border-radius: 0 4px 4px 0;
+        }
+        .trade-card-journal.win::before { background: var(--success); box-shadow: 0 0 20px rgba(0,200,83,0.3); }
+        .trade-card-journal.loss::before { background: var(--danger); box-shadow: 0 0 20px rgba(255,23,68,0.3); }
+        .trade-card-journal:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.5); }
+
+        .trade-journal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .trade-journal-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+        .trade-journal-symbol {
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -0.2px;
+        }
+        .trade-journal-type {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .trade-journal-type.buy { background: rgba(0,200,83,0.15); color: var(--success); }
+        .trade-journal-type.sell { background: rgba(255,23,68,0.15); color: var(--danger); }
+
+        .trade-journal-prices {
+            display: flex;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            margin-bottom: 14px;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        .price-item { text-align: center; flex: 1; }
+        .price-label { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .price-value { font-size: 15px; font-weight: 700; font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+
+        .trade-journal-results {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 14px;
+        }
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .result-icon { font-size: 16px; }
+        .result-text { font-size: 14px; font-weight: 600; }
+        .result-pips { color: var(--success); }
+        .result-pips.neg { color: var(--danger); }
+        .result-money { font-size: 20px; font-weight: 900; }
+        .result-money.pos { color: var(--success); }
+        .result-money.neg { color: var(--danger); }
+
+        .trade-journal-conditions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+        .condition-tag {
+            padding: 5px 10px;
+            background: rgba(255,215,0,0.06);
+            border: 1px solid rgba(255,215,0,0.15);
+            border-radius: 20px;
+            font-size: 11px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+        .condition-tag.fulfilled { background: rgba(0,200,83,0.08); border-color: rgba(0,200,83,0.2); color: var(--success); }
+        .condition-tag.failed { background: rgba(255,23,68,0.08); border-color: rgba(255,23,68,0.2); color: var(--danger); }
+
+        .account-summary {
+            background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.01));
+            border: 1px solid rgba(255,215,0,0.15);
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .account-summary::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,215,0,0.3), transparent);
+        }
+        .account-balance {
+            text-align: center;
+            margin-bottom: 18px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid rgba(255,215,0,0.1);
+        }
+        .balance-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .balance-value {
+            font-size: 40px;
+            font-weight: 900;
+            color: var(--success);
+            text-shadow: 0 0 30px rgba(0,200,83,0.25);
+            letter-spacing: -1px;
+        }
+        .deposit-info {
+            display: flex;
+            justify-content: space-around;
+        }
+        .deposit-total, .profit-total {
+            text-align: center;
+        }
+        .deposit-label, .profit-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .deposit-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .profit-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .deposits-section {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-card);
+        }
+        .deposits-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .deposits-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .deposits-note {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .deposits-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .deposit-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,255,255,0.03);
+            transition: all 0.2s ease;
+        }
+        .deposit-item:hover { border-color: var(--border); }
+        .deposit-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(0,200,83,0.12);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .deposit-details { flex: 1; margin-left: 14px; min-width: 0; }
+        .deposit-date { font-size: 11px; color: var(--text-muted); }
+        .deposit-method { font-size: 14px; font-weight: 700; margin-top: 2px; }
+        .deposit-amount {
+            font-size: 17px;
+            font-weight: 900;
+            color: var(--success);
+            flex-shrink: 0;
+        }
+
+        .journal-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 28px 0 20px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .journal-divider::before, .journal-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.06);
+        }
+
+        .trade-journal-result {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 14px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        .result-reason-icon { font-size: 14px; }
+        .result-reason { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+
+        .trade-journal-learning {
+            padding: 12px 14px;
+            background: rgba(255,215,0,0.04);
+            border: 1px solid rgba(255,215,0,0.08);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-style: italic;
+            line-height: 1.5;
+        }
+        .learning-icon { color: var(--primary); margin-right: 6px; }
+
+        .journal-stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-top: 20px;
+            box-shadow: var(--shadow-card);
+        }
+        .journal-stat { text-align: center; }
+        .stat-num { font-size: 22px; font-weight: 900; color: var(--primary); letter-spacing: -0.5px; }
+        .stat-num.wins { color: var(--success); }
+        .stat-num.losses { color: var(--danger); }
+        .stat-label { font-size: 10px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Trading Mode Toggle */
+        .trading-mode-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
+        }
+        .trading-mode-card.aggressive {
+            border-color: rgba(255,215,0,0.25);
+            box-shadow: var(--shadow-card), var(--glow-gold);
+        }
+        .trading-mode-card.aggressive::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        }
+        .mode-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .mode-title {
+            font-size: 15px;
+            font-weight: 800;
+        }
+        .mode-status-badge {
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .mode-status-badge.normal {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-muted);
+        }
+        .mode-status-badge.aggressive {
+            background: rgba(255,215,0,0.15);
+            color: var(--primary);
+            border: 1px solid rgba(255,215,0,0.2);
+        }
+        .mode-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .mode-toggle-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+        .mode-toggle-label.active {
+            color: var(--primary);
+        }
+        .mode-toggle-switch {
+            position: relative;
+            width: 56px;
+            height: 30px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .mode-toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .mode-toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: var(--border);
+            border-radius: 30px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .mode-toggle-slider::before {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 3px;
+            width: 24px;
+            height: 24px;
+            background: var(--text);
+            border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .mode-toggle-switch input:checked + .mode-toggle-slider {
+            background: var(--primary);
+        }
+        .mode-toggle-switch input:checked + .mode-toggle-slider::before {
+            transform: translateX(26px);
+            background: #0a0a0a;
+        }
+        .mode-details {
+            display: flex;
+            gap: 16px;
+            margin-top: 14px;
+        }
+        .mode-detail-item {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        .mode-detail-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .mode-detail-value {
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .mode-detail-value.gold { color: var(--primary); }
+        .mode-detail-value.green { color: var(--success); }
+
+        .otp-display-card {
+            margin-top: 24px;
+            padding: 24px;
+            background: rgba(255,215,0,0.06);
+            border: 1px solid rgba(255,215,0,0.2);
+            border-radius: var(--radius-lg);
+            text-align: center;
+        }
+        .otp-display-icon { font-size: 32px; margin-bottom: 8px; }
+        .otp-display-title {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .otp-display-code {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            color: var(--primary);
+            font-family: 'JetBrains Mono', 'SF Mono', monospace;
+            padding: 16px;
+            background: rgba(0,0,0,0.3);
+            border-radius: var(--radius-md);
+            margin-bottom: 12px;
+            text-shadow: 0 0 30px rgba(255,215,0,0.2);
+        }
+        .otp-display-note {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+        }
+        .otp-show-code {
+            text-align: center;
+            margin-top: 16px;
+        }
+        .otp-show-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .otp-show-btn:hover { color: var(--primary); background: rgba(255,215,0,0.08); }
+        .otp-code-reveal {
+            margin-top: 10px;
+            padding: 12px;
+            background: rgba(255,215,0,0.06);
+            border: 1px solid rgba(255,215,0,0.15);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .otp-code-reveal strong {
+            font-size: 24px;
+            letter-spacing: 4px;
+            color: var(--primary);
+            font-family: 'JetBrains Mono', 'SF Mono', monospace;
+        }
+
+        .bot-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+        }
+        .bot-overlay.show { pointer-events: auto; }
+        .bot-message-card {
+            background: rgba(20,20,20,0.95);
+            border: 1px solid rgba(255,215,0,0.3);
+            border-radius: var(--radius-xl);
+            padding: 40px 36px;
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-elevated), 0 0 60px rgba(255,215,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .bot-message-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        }
+        .bot-avatar {
+            font-size: 56px;
+            margin-bottom: 16px;
+            filter: drop-shadow(0 0 20px rgba(255,215,0,0.3));
+        }
+        .bot-message {
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.6;
+            color: var(--text);
+            letter-spacing: -0.2px;
+        }
+        .bot-message .highlight { color: var(--primary); }
+        .bot-dots {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+        .bot-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+        .bot-dot.active { background: var(--primary); box-shadow: 0 0 12px rgba(255,215,0,0.5); }
+        .bot-skip {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 1;
+            font-family: inherit;
+        }
+        .bot-skip:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--text);
+        }
+
+        @media (min-width: 768px) {
+            .login-card { padding: 44px 40px; }
+            .brand { font-size: 38px; }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+            .content { max-width: 960px; margin: 0 auto; width: 100%; }
+            .session-tracker, .card, .account-summary, .deposits-section { padding: 28px; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="candleCanvas"></canvas>
+    <div class="bg-gradient"></div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="screen active">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="brand">THE BIG DOGS FX</div>
+                <div class="slogan">We chase the cash</div>
+
+                <!-- STEP 1: Broker Selection -->
+                <div id="step1Broker">
+                    <div class="progress-steps">
+                        <div class="step-dot active"></div>
+                        <div class="step-dot"></div>
+                        <div class="step-dot"></div>
+                        <div class="step-dot"></div>
+                    </div>
+                    <div class="step-title">Select Your Broker</div>
+                    <div class="step-subtitle">Search and choose your trading broker</div>
+
+                    <div class="search-wrapper">
+                        <span class="search-icon">&#x1F50D;</span>
+                        <input type="text" class="search-input" id="brokerSearch" placeholder="Search broker..." oninput="filterBrokers()">
+                    </div>
+
+                    <div class="broker-list" id="brokerList">
+                        <div class="broker-item" onclick="selectBroker('ifx', 'IFX Brokers', 'Global ECN/STP', '#1a472a')">
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#1a472a"/>
+                                    <path d="M14 18h8v20h-8zM24 18h8v20h-8zM34 18h8v20h-8z" fill="#4ade80"/>
+                                    <text x="28" y="48" text-anchor="middle" fill="#4ade80" font-size="7" font-weight="800" font-family="Arial">BROKERS</text>
+                                </svg>
+                            </div>
+                            <div class="broker-info">
+                                <div class="broker-name">IFX Brokers</div>
+                                <div class="broker-desc">Global ECN/STP Broker</div>
+                            </div>
+                            <a href="https://www.ifxbrokers.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
+                        </div>
+                        <div class="broker-item" onclick="selectBroker('xm', 'XM Broker', 'CFD & Forex', '#0d47a1')">
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#0d47a1"/>
+                                    <text x="28" y="38" text-anchor="middle" fill="#fff" font-size="22" font-weight="900" font-family="Arial">XM</text>
+                                </svg>
+                            </div>
+                            <div class="broker-info">
+                                <div class="broker-name">XM Broker</div>
+                                <div class="broker-desc">CFD &amp; Forex Trading</div>
+                            </div>
+                            <a href="https://www.xm.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
+                        </div>
+                        <div class="broker-item" onclick="selectBroker('exness', 'Exness', 'Ultra-fast Withdrawals', '#f57c00')">
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#f57c00"/>
+                                    <text x="28" y="36" text-anchor="middle" fill="#fff" font-size="16" font-weight="900" font-family="Arial">EX</text>
+                                    <text x="28" y="48" text-anchor="middle" fill="#fff" font-size="7" font-weight="600" font-family="Arial">NESS</text>
+                                </svg>
+                            </div>
+                            <div class="broker-info">
+                                <div class="broker-name">Exness</div>
+                                <div class="broker-desc">Ultra-fast Withdrawals</div>
+                            </div>
+                            <a href="https://www.exness.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
+                        </div>
+                        <div class="broker-item" onclick="selectBroker('justmarkets', 'JustMarkets', 'Low Spreads', '#c62828')">
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#c62828"/>
+                                    <path d="M12 28 L22 18 L32 28 L44 16" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                    <circle cx="44" cy="16" r="3" fill="#fff"/>
+                                    <text x="28" y="48" text-anchor="middle" fill="#fff" font-size="7" font-weight="800" font-family="Arial">JM</text>
+                                </svg>
+                            </div>
+                            <div class="broker-info">
+                                <div class="broker-name">JustMarkets</div>
+                                <div class="broker-desc">Low Spreads &amp; High Leverage</div>
+                            </div>
+                            <a href="https://justmarkets.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
+                        </div>
+                        <div class="broker-item" onclick="selectBroker('fxpro', 'FXTM (FX Pro)', 'Award-winning Platform', '#4a148c')">
+                            <div class="broker-logo">
+                                <svg viewBox="0 0 56 56" fill="none">
+                                    <rect width="56" height="56" rx="12" fill="#4a148c"/>
+                                    <text x="18" y="32" text-anchor="middle" fill="#fff" font-size="14" font-weight="900" font-family="Arial">FX</text>
+                                    <text x="40" y="32" text-anchor="middle" fill="#e040fb" font-size="14" font-weight="900" font-family="Arial">P</text>
+                                    <line x1="28" y1="20" x2="28" y2="40" stroke="#e040fb" stroke-width="2"/>
+                                </svg>
+                            </div>
+                            <div class="broker-info">
+                                <div class="broker-name">FXTM (FX Pro)</div>
+                                <div class="broker-desc">Award-winning Platform</div>
+                            </div>
+                            <a href="https://www.fxpro.com" target="_blank" rel="noopener" class="broker-link" onclick="event.stopPropagation()">Visit &#x1F517;</a>
+                        </div>
+                    </div>
+
+                    <p class="error-msg" id="brokerError"></p>
+                    <button class="btn" id="brokerNextBtn" onclick="goToStep(2)" disabled>NEXT</button>
+                </div>
+
+                <!-- STEP 2: Broker Credentials -->
+                <div id="step2Credentials" style="display: none;">
+                    <div class="progress-steps">
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot active"></div>
+                        <div class="step-dot"></div>
+                        <div class="step-dot"></div>
+                    </div>
+
+                    <div id="selectedBrokerDisplay" class="selected-broker">
+                        <div class="broker-logo" id="selBrokerLogo"></div>
+                        <div class="broker-info">
+                            <div class="broker-name" id="selBrokerName">Broker</div>
+                            <div class="broker-desc" id="selBrokerDesc">Description</div>
+                        </div>
+                        <a href="#" id="selBrokerLink" target="_blank" rel="noopener" class="selected-broker-link">Visit &#x1F517;</a>
+                        <button class="change-broker" onclick="goToStep(1)">Change</button>
+                    </div>
+
+                    <div class="step-title">Login Credentials</div>
+                    <div class="step-subtitle">Enter your trading account details</div>
+
+                    <div class="form-group">
+                        <label>Account Number / Login ID</label>
+                        <input type="text" id="credAccount" placeholder="e.g. 12345678" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label>Trading Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="credPassword" placeholder="Enter trading password">
+                            <button class="password-toggle" onclick="togglePassword('credPassword', this)">&#x1F441;</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Server</label>
+                        <select id="credServer">
+                            <option value="">Select server...</option>
+                            <option value="Live">Live Server</option>
+                            <option value="Demo">Demo Server</option>
+                            <option value="Live2">Live Server 2</option>
+                            <option value="Real">Real Account</option>
+                        </select>
+                    </div>
+
+                    <p class="error-msg" id="credError"></p>
+                    <button class="btn" onclick="goToStep(3)">NEXT</button>
+                    <button class="btn-back" onclick="goToStep(1)">&#x2190; Back to broker selection</button>
+                </div>
+
+                <!-- STEP 3: Email for OTP -->
+                <div id="step3Email" style="display: none;">
+                    <div class="progress-steps">
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot active"></div>
+                        <div class="step-dot"></div>
+                    </div>
+                    <div class="step-title">Verify It's You</div>
+                    <div class="step-subtitle">Enter your email to receive a verification code</div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="otpEmail" placeholder="your@email.com" inputmode="email">
+                    </div>
+
+                    <p class="error-msg" id="emailError"></p>
+                    <p class="success-msg" id="emailSuccess"></p>
+                    <button class="btn" id="sendOtpBtn" onclick="sendOTP()">SEND VERIFICATION CODE</button>
+
+                    <div id="otpDisplayCard" class="otp-display-card" style="display:none;">
+                        <div class="otp-display-icon">&#x1F512;</div>
+                        <div class="otp-display-title">Verification Code</div>
+                        <div class="otp-display-code" id="otpDisplayCode">------</div>
+                        <div class="otp-display-note">Enter this code on the next screen</div>
+                        <button class="btn" onclick="goToOtpStep()">I HAVE THE CODE &#x2192;</button>
+                    </div>
+
+                    <button class="btn-back" onclick="goToStep(2)">&#x2190; Back to credentials</button>
+                </div>
+
+                <!-- STEP 4: OTP Verification -->
+                <div id="step4OTP" style="display: none;">
+                    <div class="progress-steps">
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot completed"></div>
+                        <div class="step-dot active"></div>
+                    </div>
+                    <div class="step-title">Enter Verification Code</div>
+                    <div class="step-subtitle">
+                        We sent a 6-digit code to<br>
+                        <span class="otp-email" id="otpEmailDisplay">your@email.com</span>
+                    </div>
+
+                    <div class="otp-container">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 1)" onkeydown="otpBack(event, this, 0)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 2)" onkeydown="otpBack(event, this, 1)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 3)" onkeydown="otpBack(event, this, 2)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 4)" onkeydown="otpBack(event, this, 3)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 5)" onkeydown="otpBack(event, this, 4)">
+                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, -1)" onkeydown="otpBack(event, this, 5)">
+                    </div>
+
+                    <p class="error-msg" id="otpError"></p>
+                    <p class="success-msg" id="otpSuccess"></p>
+                    <button class="btn" onclick="verifyOTP()">VERIFY & LOGIN</button>
+
+                    <div class="otp-show-code">
+                        <button class="otp-show-btn" id="otpShowBtn" onclick="toggleOtpCode()">&#x1F441; Show code</button>
+                        <div class="otp-code-reveal" id="otpCodeReveal" style="display:none;">
+                            Your code: <strong id="otpRevealCode">------</strong>
+                        </div>
+                    </div>
+
+                    <div class="resend-otp">
+                        <button id="resendBtn" onclick="resendOTP()" disabled>Resend code</button>
+                        <span class="resend-timer" id="resendTimer"></span>
+                    </div>
+
+                    <button class="btn-back" onclick="goToStep(3)">&#x2190; Change email</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD SCREEN -->
+    <div id="dashboardScreen" class="screen">
+        <div class="dashboard">
+            <div class="header">
+                <div>
+                    <div class="header-brand">THE BIG DOGS FX</div>
+                    <div class="header-slogan">We chase the cash</div>
+                </div>
+                <button class="logout-btn" onclick="handleLogout()" title="Logout and switch account">&#x23FB; Logout</button>
+            </div>
+
+            <div class="user-bar">
+                <div class="user-avatar" id="userAvatar">T</div>
+                <div>
+                    <div class="welcome-text">Welcome, <span id="userName">Trader</span></div>
+                    <div class="broker-badge" id="brokerBadge">
+                        <div id="badgeLogo" style="width:18px;height:18px;display:inline-flex"></div>
+                        <span id="badgeName">Connected</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="overview" onclick="switchTab('overview')">Overview</div>
+                <div class="tab" data-tab="trades" onclick="switchTab('trades')">Trades</div>
+                <div class="tab" data-tab="journal" onclick="switchTab('journal')">Journal</div>
+                <div class="tab" data-tab="settings" onclick="switchTab('settings')">Settings</div>
+            </div>
+
+            <div class="content">
+                <div id="overviewTab" class="tab-content active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="statWinRate" style="color: var(--success)">--</div>
+                            <div class="stat-label">Win Rate</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statPnl" style="color: var(--text)">--</div>
+                            <div class="stat-label">Total P&L</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statOpen" style="color: var(--primary)">--</div>
+                            <div class="stat-label">Open Trades</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statTotal" style="color: var(--text-secondary)">--</div>
+                            <div class="stat-label">Total Trades</div>
+                        </div>
+                    </div>
+
+                    <!-- Market Session Tracker -->
+                    <div class="session-tracker">
+                        <div class="calendar-header">
+                            <div class="calendar-date">
+                                <span class="cal-icon">&#x1F4C5;</span>
+                                <span id="currentDate">Loading...</span>
+                            </div>
+                            <div class="calendar-time">
+                                <span class="time-icon">&#x1F551;</span>
+                                <span id="currentTime">--:--:--</span>
+                                <span class="time-zone">UTC+2</span>
+                            </div>
+                        </div>
+                        <div id="weekendBanner" class="weekend-banner" style="display:none;">
+                            <span class="weekend-icon">&#x26A0;</span>
+                            Market Closed - Weekend
+                        </div>
+                        <div class="session-header">
+                            <span class="session-title">Market Sessions</span>
+                            <span class="market-status" id="marketStatus">Loading...</span>
+                        </div>
+                        <div id="countdownSection" class="countdown-section" style="display:none;">
+                            <div class="countdown-label">Next market opens in</div>
+                            <div class="countdown-timer" id="countdownTimer">--:--:--:--</div>
+                        </div>
+                        <div class="sessions-list" id="sessionsList">
+                            <div class="session-item" id="asiaSession">
+                                <span class="session-flag">&#x1F1EF;&#x1F1F5;</span>
+                                <div class="session-name">Asia Session</div>
+                                <div class="session-time">03:00 - 11:00</div>
+                                <div class="session-status" id="asiaStatus">Closed</div>
+                            </div>
+                            <div class="session-item" id="londonSession">
+                                <span class="session-flag">&#x1F1EC;&#x1F1E7;</span>
+                                <div class="session-name">London Session</div>
+                                <div class="session-time">10:00 - 19:00</div>
+                                <div class="session-status" id="londonStatus">Closed</div>
+                            </div>
+                            <div class="session-item" id="nySession">
+                                <span class="session-flag">&#x1F1FA;&#x1F1F8;</span>
+                                <div class="session-name">New York Session</div>
+                                <div class="session-time">15:00 - 00:00</div>
+                                <div class="session-status" id="nyStatus">Closed</div>
+                            </div>
+                        </div>
+
+                        <div class="app-footer">
+                            <span>Created by</span>
+                            <span class="footer-name">ty_son_de_3rd</span>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <span class="info-icon">&#x1F4CA;</span>
+                        <div class="info-text" id="modeInfoText">EA is monitoring H1 charts for supply/demand zones with FVG confluence</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Live Signals</div>
+                        <div class="signal-item">
+                            <div class="signal-dot"></div>
+                            <span class="signal-text" id="signalText">Scanning for setups...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tradesTab" class="tab-content">
+                    <div id="tradesList">
+                        <div id="tradesEmpty" class="empty-state">
+                            <div class="empty-icon">&#x1F4C8;</div>
+                            <div class="empty-text">No trades yet</div>
+                            <div class="empty-subtext">Trades will appear here when the EA executes</div>
+                        </div>
+                        <div id="tradesContainer" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- JOURNAL TAB -->
+                <div id="journalTab" class="tab-content">
+                    <!-- Account Summary Header -->
+                    <div class="account-summary">
+                        <div class="account-balance">
+                            <div class="balance-label">Current Balance</div>
+                            <div class="balance-value" id="accountBalance">R300.00</div>
+                        </div>
+                        <div class="deposit-info">
+                            <div class="deposit-total">
+                                <span class="deposit-label">Deposited:</span>
+                                <span class="deposit-value" id="totalDeposited">R300.00</span>
+                            </div>
+                            <div class="profit-total">
+                                <span class="profit-label">Profit:</span>
+                                <span class="profit-value" id="totalProfit">R0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deposits History -->
+                    <div class="deposits-section">
+                        <div class="deposits-header">
+                            <span class="deposits-title">&#x1F4B3; Deposit History</span>
+                            <span class="deposits-note">Last 7 days</span>
+                        </div>
+                        <div id="depositsList" class="deposits-list">
+                            <!-- Deposit cards will be injected here -->
+                        </div>
+                    </div>
+
+                    <div class="journal-divider">
+                        <span>&#x1F4C8; Trading Journal</span>
+                    </div>
+
+                    <!-- Journal Summary -->
+                    <div class="journal-summary">
+                        <div class="journal-pips">
+                            <div class="pips-label">Total Pips</div>
+                            <div class="pips-value" id="journalPips">+0</div>
+                        </div>
+                        <div class="journal-mode">
+                            <span class="mode-badge" id="journalMode">NORMAL MODE</span>
+                        </div>
+                    </div>
+
+                    <div class="journal-filter">
+                        <span class="journal-filter-label">Showing:</span>
+                        <select id="journalFilter" onchange="filterJournal()">
+                            <option value="all">All Trades</option>
+                            <option value="wins">Winners Only</option>
+                            <option value="losses">Losers Only</option>
+                        </select>
+                        <span class="journal-days">Last 7 Days</span>
+                    </div>
+
+                    <div id="journalList" class="journal-list">
+                        <!-- Trade cards will be injected here -->
+                    </div>
+                </div>
+
+                <div id="settingsTab" class="tab-content">
+                    <div class="card">
+                        <div class="card-title">Connected Broker</div>
+                        <div class="setting-item">
+                            <span class="setting-label">Broker</span>
+                            <span class="setting-value" id="settingBroker">--</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Account</span>
+                            <span class="setting-value" id="settingAccount">--</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Server</span>
+                            <span class="setting-value" id="settingServer">--</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Risk Settings</div>
+                        <div class="setting-item">
+                            <span class="setting-label">Risk per Trade</span>
+                            <span class="setting-value" id="settingRisk">2%</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Max Open Trades</span>
+                            <span class="setting-value">3</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Max Spread</span>
+                            <span class="setting-value">300 pts</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Account</div>
+                        <div class="setting-item">
+                            <span class="setting-label">Email</span>
+                            <span class="setting-value" id="settingEmail">--</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Status</span>
+                            <span class="setting-value" style="color: var(--success)">&#x2713; Verified</span>
+                        </div>
+                    </div>
+
+                    <!-- Trading Mode Toggle -->
+                    <div class="trading-mode-card" id="tradingModeCard">
+                        <div class="mode-header">
+                            <span class="mode-title">&#x26A1; Trading Mode</span>
+                            <span class="mode-status-badge normal" id="modeStatusBadge">NORMAL</span>
+                        </div>
+                        <div class="mode-toggle-row">
+                            <span class="mode-toggle-label" id="modeLabelLeft">&#x1F4C4; Normal</span>
+                            <label class="mode-toggle-switch">
+                                <input type="checkbox" id="modeToggle" onchange="handleModeToggle()">
+                                <span class="mode-toggle-slider"></span>
+                            </label>
+                            <span class="mode-toggle-label" id="modeLabelRight">&#x26A1; Aggressive</span>
+                        </div>
+                        <div class="mode-details" id="modeDetails">
+                            <div class="mode-detail-item">
+                                <div class="mode-detail-label">Timeframe</div>
+                                <div class="mode-detail-value" id="modeDetailTf">H1</div>
+                            </div>
+                            <div class="mode-detail-item">
+                                <div class="mode-detail-label">Risk</div>
+                                <div class="mode-detail-value" id="modeDetailRisk">2%</div>
+                            </div>
+                            <div class="mode-detail-item">
+                                <div class="mode-detail-label">Strategy</div>
+                                <div class="mode-detail-value" id="modeDetailStrategy">S/D Zones</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Multi-Agent Voting Card -->
+                    <div class="trading-mode-card" id="agentVotingCard">
+                        <div class="mode-header">
+                            <span class="mode-title">&#x1F916; Multi-Agent Voting</span>
+                            <span class="mode-status-badge normal" id="agentStatusBadge">OFF</span>
+                        </div>
+                        <div class="mode-toggle-row">
+                            <span class="mode-toggle-label">Votes required to trade</span>
+                            <span class="setting-value" id="agentMinAgree">3 / 5</span>
+                        </div>
+                        <div class="mode-details" style="margin-top:14px">
+                            <div class="mode-detail-item">
+                                <div class="mode-detail-label">Agent 1</div>
+                                <div class="mode-detail-value gold" id="agent1Status">S&D Zones</div>
+                            </div>
+                            <div class="mode-detail-item">
+                                <div class="mode-detail-label">Agent 2</div>
+                                <div class="mode-detail-value gold" id="agent2Status">Liq Sweep</div>
+                            </div>
+                            <div class="mode-detail-item">
+                                <div class="mode-detail-label">Agent 3</div>
+                                <div class="mode-detail-value gold" id="agent3Status">FVG+Fib</div>
+                            </div>
+                            <div class="mode-detail-item">
+                                <div class="mode-detail-label">Agent 4</div>
+                                <div class="mode-detail-value gold" id="agent4Status">Momentum</div>
+                            </div>
+                            <div class="mode-detail-item">
+                                <div class="mode-detail-label">Agent 5</div>
+                                <div class="mode-detail-value gold" id="agent5Status">Trend</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== CANDLESTICK CHART ANIMATION =====
+        (function() {
+            const canvas = document.getElementById('candleCanvas');
+            const ctx = canvas.getContext('2d');
+            function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const NUM_CANDLES = 80;
+            const candles = [];
+            let currentPrice = 1.08500;
+            let trend = 0;
+            let trendDuration = 0;
+
+            function generateCandle() {
+                if (trendDuration <= 0) { trend = (Math.random() - 0.5) * 0.0008; trendDuration = Math.floor(Math.random() * 15) + 5; }
+                trendDuration--;
+                const volatility = 0.0004 + Math.random() * 0.0006;
+                const open = currentPrice;
+                const direction = Math.random() > 0.48 ? 1 : -1;
+                const bodySize = Math.random() * volatility;
+                const close = open + (direction * bodySize) + (trend * 0.3);
+                const high = Math.max(open, close) + (Math.random() * volatility * 0.6);
+                const low = Math.min(open, close) - (Math.random() * volatility * 0.6);
+                currentPrice = close;
+                candles.push({ open, high, low, close });
+                if (candles.length > NUM_CANDLES) candles.shift();
+            }
+
+            for (let i = 0; i < NUM_CANDLES; i++) generateCandle();
+
+            let lastUpdate = 0;
+            function drawChart(timestamp) {
+                if (timestamp - lastUpdate > 800) { generateCandle(); lastUpdate = timestamp; }
+                const w = canvas.width, h = canvas.height;
+                ctx.clearRect(0, 0, w, h);
+
+                let minP = Infinity, maxP = -Infinity;
+                candles.forEach(c => { if (c.low < minP) minP = c.low; if (c.high > maxP) maxP = c.high; });
+                const pad = (maxP - minP) * 0.15;
+                minP -= pad; maxP += pad;
+                const toY = (p) => h - ((p - minP) / (maxP - minP)) * h;
+                const cw = Math.max(4, (w / NUM_CANDLES) * 0.65);
+                const sp = w / NUM_CANDLES;
+
+                candles.forEach((c, i) => {
+                    const x = i * sp + sp / 2;
+                    const bull = c.close >= c.open;
+                    const col = bull ? '#00C853' : '#FF1744';
+                    const bTop = toY(Math.max(c.open, c.close));
+                    const bBot = toY(Math.min(c.open, c.close));
+                    const bH = Math.max(1, bBot - bTop);
+
+                    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(x, toY(c.high)); ctx.lineTo(x, toY(c.low)); ctx.stroke();
+
+                    const r = 1.5, bx = x - cw / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(bx + r, bTop); ctx.lineTo(bx + cw - r, bTop);
+                    ctx.arcTo(bx + cw, bTop, bx + cw, bTop + r, r);
+                    ctx.lineTo(bx + cw, bBot - r); ctx.arcTo(bx + cw, bBot, bx + cw - r, bBot, r);
+                    ctx.lineTo(bx + r, bBot); ctx.arcTo(bx, bBot, bx, bBot - r, r);
+                    ctx.lineTo(bx, bTop + r); ctx.arcTo(bx, bTop, bx + r, bTop, r);
+                    ctx.closePath();
+
+                    ctx.fillStyle = bull ? 'rgba(0,200,83,0.15)' : 'rgba(255,23,68,0.6)';
+                    ctx.fill();
+                    ctx.strokeStyle = bull ? 'rgba(0,200,83,0.8)' : 'rgba(255,23,68,0.9)';
+                    ctx.stroke();
+                });
+
+                const last = candles[candles.length - 1];
+                const pY = toY(last.close);
+                const bull = last.close >= last.open;
+                const lc = bull ? '#00C853' : '#FF1744';
+
+                ctx.setLineDash([5, 5]); ctx.strokeStyle = lc + '66'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(0, pY); ctx.lineTo(w, pY); ctx.stroke(); ctx.setLineDash([]);
+
+                const lbl = last.close.toFixed(5);
+                ctx.font = 'bold 12px monospace';
+                const lw = ctx.measureText(lbl).width + 12;
+                ctx.fillStyle = lc;
+                ctx.beginPath(); ctx.roundRect(w - lw - 4, pY - 10, lw, 20, 4); ctx.fill();
+                ctx.fillStyle = bull ? '#000' : '#fff'; ctx.textBaseline = 'middle';
+                ctx.fillText(lbl, w - lw + 2, pY);
+
+                const ps = 4 + Math.sin(timestamp / 300) * 2;
+                ctx.beginPath(); ctx.arc(w - 4, pY, ps, 0, Math.PI * 2); ctx.fillStyle = lc + '33'; ctx.fill();
+                ctx.beginPath(); ctx.arc(w - 4, pY, 3, 0, Math.PI * 2); ctx.fillStyle = lc; ctx.fill();
+
+                requestAnimationFrame(drawChart);
+            }
+            requestAnimationFrame(drawChart);
+        })();
+
+        // ===== APP STATE =====
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000/api'
+            : null;
+        const WS_URL = API_URL ? API_URL.replace('/api', '').replace('https', 'wss').replace('http', 'ws') : null;
+        let token = localStorage.getItem('userToken');
+        let session = JSON.parse(localStorage.getItem('bdSession') || 'null');
+        let generatedOTP = '';
+        let resendTimerInterval = null;
+
+        // ===== BROKER SELECTION =====
+        const BROKER_URLS = {
+            ifx: 'https://www.ifxbrokers.com',
+            xm: 'https://www.xm.com',
+            exness: 'https://www.exness.com',
+            justmarkets: 'https://justmarkets.com',
+            fxpro: 'https://www.fxpro.com'
+        };
+
+        const BROKER_LOGOS = {
+            ifx: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#1a472a"/><path d="M14 18h8v20h-8zM24 18h8v20h-8zM34 18h8v20h-8z" fill="#4ade80"/><text x="28" y="48" text-anchor="middle" fill="#4ade80" font-size="7" font-weight="800" font-family="Arial">BROKERS</text></svg>`,
+            xm: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#0d47a1"/><text x="28" y="38" text-anchor="middle" fill="#fff" font-size="22" font-weight="900" font-family="Arial">XM</text></svg>`,
+            exness: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#f57c00"/><text x="28" y="36" text-anchor="middle" fill="#fff" font-size="16" font-weight="900" font-family="Arial">EX</text><text x="28" y="48" text-anchor="middle" fill="#fff" font-size="7" font-weight="600" font-family="Arial">NESS</text></svg>`,
+            justmarkets: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#c62828"/><path d="M12 28 L22 18 L32 28 L44 16" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="44" cy="16" r="3" fill="#fff"/><text x="28" y="48" text-anchor="middle" fill="#fff" font-size="7" font-weight="800" font-family="Arial">JM</text></svg>`,
+            fxpro: `<svg viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="#4a148c"/><text x="18" y="32" text-anchor="middle" fill="#fff" font-size="14" font-weight="900" font-family="Arial">FX</text><text x="40" y="32" text-anchor="middle" fill="#e040fb" font-size="14" font-weight="900" font-family="Arial">P</text><line x1="28" y1="20" x2="28" y2="40" stroke="#e040fb" stroke-width="2"/></svg>`
+        };
+
+        let selectedBroker = null;
+
+        function selectBroker(id, name, desc, color) {
+            selectedBroker = { id, name, desc, color, url: BROKER_URLS[id] };
+            document.querySelectorAll('.broker-item').forEach(item => item.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            document.getElementById('brokerNextBtn').disabled = false;
+            document.getElementById('brokerError').classList.remove('show');
+        }
+
+        function filterBrokers() {
+            const query = document.getElementById('brokerSearch').value.toLowerCase();
+            document.querySelectorAll('.broker-item').forEach(item => {
+                const name = item.querySelector('.broker-name').textContent.toLowerCase();
+                item.classList.toggle('hidden', !name.includes(query));
+            });
+        }
+
+        // ===== STEP NAVIGATION =====
+        function goToStep(step) {
+            document.getElementById('step1Broker').style.display = step === 1 ? 'block' : 'none';
+            document.getElementById('step2Credentials').style.display = step === 2 ? 'block' : 'none';
+            document.getElementById('step3Email').style.display = step === 3 ? 'block' : 'none';
+            document.getElementById('step4OTP').style.display = step === 4 ? 'block' : 'none';
+
+            if (step === 2 && selectedBroker) {
+                document.getElementById('selBrokerLogo').innerHTML = BROKER_LOGOS[selectedBroker.id];
+                document.getElementById('selBrokerName').textContent = selectedBroker.name;
+                document.getElementById('selBrokerDesc').textContent = selectedBroker.desc;
+                document.getElementById('selBrokerLink').href = selectedBroker.url;
+            }
+
+            if (step === 4) {
+                document.getElementById('otpEmailDisplay').textContent = document.getElementById('otpEmail').value;
+                startResendTimer();
+            }
+
+            document.getElementById('brokerError').classList.remove('show');
+            document.getElementById('credError').classList.remove('show');
+            document.getElementById('emailError').classList.remove('show');
+            document.getElementById('emailSuccess').classList.remove('show');
+            document.getElementById('otpError').classList.remove('show');
+            document.getElementById('otpSuccess').classList.remove('show');
+        }
+
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.innerHTML = '&#x2713;';
+            } else {
+                input.type = 'password';
+                btn.innerHTML = '&#x1F441;';
+            }
+        }
+
+        // ===== OTP =====
+        function generateOTP() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
+        async function sendOTP() {
+            const email = document.getElementById('otpEmail').value.trim();
+            const errorEl = document.getElementById('emailError');
+            const successEl = document.getElementById('emailSuccess');
+
+            if (!email || !email.includes('@')) {
+                errorEl.textContent = 'Please enter a valid email address';
+                errorEl.classList.add('show');
+                return;
+            }
+
+            generatedOTP = generateOTP();
+
+            document.getElementById('sendOtpBtn').style.display = 'none';
+            document.getElementById('otpDisplayCode').textContent = generatedOTP;
+            document.getElementById('otpDisplayCard').style.display = 'block';
+            document.getElementById('otpRevealCode').textContent = generatedOTP;
+
+            // Try backend in background — code is already visible
+            try {
+                await fetch(API_URL + '/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp: generatedOTP })
+                });
+            } catch {}
+        }
+
+        function goToOtpStep() {
+            goToStep(4);
+            startResendTimer();
+        }
+
+        function toggleOtpCode() {
+            const reveal = document.getElementById('otpCodeReveal');
+            const btn = document.getElementById('otpShowBtn');
+            const isHidden = reveal.style.display === 'none';
+            reveal.style.display = isHidden ? 'block' : 'none';
+            btn.innerHTML = isHidden ? '&#x1F441; Hide code' : '&#x1F441; Show code';
+        }
+
+        function startResendTimer() {
+            let seconds = 60;
+            const btn = document.getElementById('resendBtn');
+            const timer = document.getElementById('resendTimer');
+            btn.disabled = true;
+            timer.textContent = `Resend in ${seconds}s`;
+
+            if (resendTimerInterval) clearInterval(resendTimerInterval);
+            resendTimerInterval = setInterval(() => {
+                seconds--;
+                timer.textContent = `Resend in ${seconds}s`;
+                if (seconds <= 0) {
+                    clearInterval(resendTimerInterval);
+                    btn.disabled = false;
+                    timer.textContent = '';
+                }
+            }, 1000);
+        }
+
+        async function resendOTP() {
+            generatedOTP = generateOTP();
+            try {
+                await fetch(API_URL + '/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: document.getElementById('otpEmail').value, otp: generatedOTP })
+                });
+            } catch {
+                // Update displayed code on both cards
+                document.getElementById('otpDisplayCode').textContent = generatedOTP;
+                document.getElementById('otpRevealCode').textContent = generatedOTP;
+            }
+            startResendTimer();
+        }
+
+        function otpMove(current, next) {
+            if (current.value.length === 1 && next >= 0) {
+                const inputs = document.querySelectorAll('.otp-input');
+                if (next < inputs.length) inputs[next].focus();
+            }
+        }
+
+        function otpBack(e, current, index) {
+            if (e.key === 'Backspace' && current.value === '' && index > 0) {
+                document.querySelectorAll('.otp-input')[index - 1].focus();
+            }
+        }
+
+        function verifyOTP() {
+            const inputs = document.querySelectorAll('.otp-input');
+            let code = '';
+            inputs.forEach(i => code += i.value);
+
+            if (code.length !== 6) {
+                document.getElementById('otpError').textContent = 'Please enter the full 6-digit code';
+                document.getElementById('otpError').classList.add('show');
+                return;
+            }
+
+            if (code !== generatedOTP) {
+                document.getElementById('otpError').textContent = 'Invalid code. Please try again.';
+                document.getElementById('otpError').classList.add('show');
+                return;
+            }
+
+            document.getElementById('otpSuccess').textContent = 'Verified! Logging in...';
+            document.getElementById('otpSuccess').classList.add('show');
+            document.getElementById('otpError').classList.remove('show');
+
+            const account = document.getElementById('credAccount').value;
+            const server = document.getElementById('credServer').value;
+
+            session = {
+                broker: selectedBroker,
+                account: account,
+                server: server,
+                email: document.getElementById('otpEmail').value,
+                verified: true,
+                loginTime: Date.now()
+            };
+            localStorage.setItem('bdSession', JSON.stringify(session));
+
+            setTimeout(() => loadDashboard(), 1000);
+        }
+
+        // ===== DASHBOARD =====
+        function loadDashboard() {
+            document.getElementById('loginScreen').classList.remove('active');
+            document.getElementById('dashboardScreen').classList.add('active');
+
+            if (session) {
+                const name = session.broker ? session.broker.name.split(' ')[0] : 'Trader';
+                document.getElementById('userName').textContent = name;
+                document.getElementById('userAvatar').textContent = name[0];
+                document.getElementById('badgeName').textContent = `Connected via ${session.broker.name}`;
+                if (session.broker && BROKER_LOGOS[session.broker.id]) {
+                    document.getElementById('badgeLogo').innerHTML = BROKER_LOGOS[session.broker.id];
+                }
+                document.getElementById('settingBroker').textContent = session.broker.name;
+                document.getElementById('settingAccount').textContent = session.account || '--';
+                document.getElementById('settingServer').textContent = session.server || '--';
+                document.getElementById('settingEmail').textContent = session.email || '--';
+            }
+
+            loadTradingMode();
+            updateMarketSessions();
+            setInterval(updateMarketSessions, 1000);
+
+            loadJournal();
+            loadDeposits();
+
+            // Trigger bot greeting
+            switchTab('overview');
+        }
+
+        // ===== TRADING MODE =====
+        let currentTradingMode = 'normal';
+
+        async function loadTradingMode() {
+            try {
+                const token = localStorage.getItem('userToken');
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const response = await fetch(API_URL + '/auth/trading-mode', { headers });
+                const data = await response.json();
+                currentTradingMode = data.tradingMode || 'normal';
+            } catch {
+                currentTradingMode = 'normal';
+            }
+            updateModeUI(currentTradingMode);
+        }
+
+        function updateModeUI(mode) {
+            const isAgg = mode === 'aggressive';
+            const toggle = document.getElementById('modeToggle');
+            const card = document.getElementById('tradingModeCard');
+            const badge = document.getElementById('modeStatusBadge');
+            const labelLeft = document.getElementById('modeLabelLeft');
+            const labelRight = document.getElementById('modeLabelRight');
+            const tfEl = document.getElementById('modeDetailTf');
+            const riskEl = document.getElementById('modeDetailRisk');
+            const stratEl = document.getElementById('modeDetailStrategy');
+
+            if (toggle) toggle.checked = isAgg;
+            if (card) card.className = 'trading-mode-card' + (isAgg ? ' aggressive' : '');
+            if (badge) {
+                badge.textContent = isAgg ? 'AGGRESSIVE' : 'NORMAL';
+                badge.className = 'mode-status-badge ' + (isAgg ? 'aggressive' : 'normal');
+            }
+            if (labelLeft) labelLeft.className = 'mode-toggle-label' + (isAgg ? '' : ' active');
+            if (labelRight) labelRight.className = 'mode-toggle-label' + (isAgg ? ' active' : '');
+            if (tfEl) tfEl.textContent = isAgg ? 'M1 / M5' : 'H1';
+            if (riskEl) {
+                riskEl.textContent = isAgg ? '1%' : '2%';
+                riskEl.className = 'mode-detail-value' + (isAgg ? ' gold' : '');
+            }
+            if (stratEl) {
+                stratEl.textContent = isAgg ? 'Liq Sweep + FVG' : 'S/D Zones';
+                stratEl.className = 'mode-detail-value' + (isAgg ? ' gold' : '');
+            }
+
+            // Update journal mode badge
+            const modeBadge = document.getElementById('journalMode');
+            if (modeBadge) {
+                if (isAgg) {
+                    modeBadge.textContent = 'AGGRESSIVE MODE';
+                    modeBadge.className = 'mode-badge aggressive';
+                } else {
+                    modeBadge.textContent = 'NORMAL MODE';
+                    modeBadge.className = 'mode-badge normal';
+                }
+            }
+
+            // Update overview info and signals
+            const infoText = document.getElementById('modeInfoText');
+            const signalText = document.getElementById('signalText');
+            if (infoText) {
+                infoText.textContent = isAgg
+                    ? 'AGGRESSIVE: EA scanning M1/M5 for liquidity sweeps + IFVG/FVG at fib levels'
+                    : 'EA is monitoring H1 charts for supply/demand zones with FVG confluence';
+            }
+            if (signalText) {
+                signalText.textContent = isAgg
+                    ? 'Aggressive mode active - waiting for sweep + CHoSD + fib confluence...'
+                    : 'Scanning for setups...';
+            }
+        }
+
+        async function handleModeToggle() {
+            const toggle = document.getElementById('modeToggle');
+            const newMode = toggle.checked ? 'aggressive' : 'normal';
+            currentTradingMode = newMode;
+            updateModeUI(newMode);
+
+            try {
+                const token = localStorage.getItem('userToken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                };
+                await fetch(API_URL + '/auth/trading-mode', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ mode: newMode })
+                });
+            } catch {
+                // Offline mode - toggle works locally
+            }
+        }
+
+        // ===== DEPOSITS =====
+        let deposits = [];
+        const INITIAL_DEPOSIT = 300;
+
+        async function loadDeposits() {
+            try {
+                const response = await fetch(API_URL + '/deposits/recent');
+                const data = await response.json();
+                deposits = data.deposits || [];
+                updateAccountSummary(deposits);
+                renderDeposits();
+            } catch {
+                // Demo deposits with history
+                deposits = [
+                    { amount: 300, method: 'bank_transfer', createdAt: '2026-05-08T10:00:00.000Z', note: 'Initial deposit' }
+                ];
+                updateAccountSummary(deposits);
+                renderDeposits();
+            }
+        }
+
+        function updateAccountSummary(depositList) {
+            const totalDeposited = depositList.reduce((sum, d) => sum + d.amount, 0) || INITIAL_DEPOSIT;
+            document.getElementById('totalDeposited').textContent = `R${totalDeposited.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('accountBalance').textContent = `R${totalDeposited.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('totalProfit').textContent = 'R0.00';
+        }
+
+        function renderDeposits() {
+            const container = document.getElementById('depositsList');
+
+            if (deposits.length === 0) {
+                container.innerHTML = `
+                    <div class="deposit-item">
+                        <div class="deposit-icon">&#x1F4B3;</div>
+                        <div class="deposit-details">
+                            <div class="deposit-date">Today</div>
+                            <div class="deposit-method">Initial Deposit</div>
+                        </div>
+                        <div class="deposit-amount">+R300.00</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = deposits.map(d => {
+                const date = new Date(d.createdAt);
+                const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const methodNames = { bank_transfer: 'Bank Transfer', card: 'Card', crypto: 'Crypto', other: 'Other' };
+
+                return `
+                    <div class="deposit-item">
+                        <div class="deposit-icon">&#x1F4B3;</div>
+                        <div class="deposit-details">
+                            <div class="deposit-date">${dateStr} ${timeStr}</div>
+                            <div class="deposit-method">${methodNames[d.method] || 'Deposit'}</div>
+                        </div>
+                        <div class="deposit-amount">+R${d.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ===== JOURNAL =====
+        let allTrades = [];
+        let currentFilter = 'all';
+
+        async function loadJournal() {
+            try {
+                const response = await fetch(API_URL + '/trades/journal');
+                const data = await response.json();
+                allTrades = data.trades || [];
+                updateJournalSummary(data);
+                renderJournal();
+                renderTrades();
+
+                // Update account balance with profit
+                const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0) || INITIAL_DEPOSIT;
+                const newBalance = totalDeposited + (data.totalMoney || 0);
+                document.getElementById('accountBalance').textContent = `R${newBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('totalProfit').textContent = `${(data.totalMoney || 0) >= 0 ? '+' : ''}R${Math.abs(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            } catch {
+                // No backend — show clean slate with R300 deposit only
+                allTrades = [];
+                updateJournalSummary({ totalMoney: 0, totalPips: 0, wins: 0, losses: 0 });
+                renderJournal();
+                renderTrades();
+
+                const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0) || INITIAL_DEPOSIT;
+                document.getElementById('accountBalance').textContent = `R${totalDeposited.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('totalProfit').textContent = 'R0.00';
+                if (document.getElementById('statOpen')) {
+                    document.getElementById('statOpen').textContent = '0';
+                }
+            }
+        }
+
+        function renderTrades() {
+            const container = document.getElementById('tradesContainer');
+            const empty = document.getElementById('tradesEmpty');
+
+            if (allTrades.length === 0) {
+                empty.style.display = 'flex';
+                container.style.display = 'none';
+                return;
+            }
+
+            empty.style.display = 'none';
+            container.style.display = 'block';
+
+            container.innerHTML = allTrades.slice(0, 50).map(trade => {
+                const date = new Date(trade.entryTime);
+                const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const isWin = trade.pips > 0;
+                const isClosed = !!trade.exitTime;
+
+                return `
+                    <div class="trade-card">
+                        <div class="trade-header">
+                            <span class="trade-symbol">${trade.symbol}</span>
+                            <span class="badge ${trade.type.toLowerCase() === 'buy' ? 'badge-buy' : 'badge-sell'}">${trade.type}</span>
+                        </div>
+                        <div class="trade-journal-prices" style="margin-bottom:0">
+                            <div class="price-item">
+                                <div class="price-label">Entry</div>
+                                <div class="price-value">${typeof trade.entryPrice === 'number' ? trade.entryPrice.toFixed(2) : trade.entryPrice}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">Exit</div>
+                                <div class="price-value">${trade.exitPrice ? (typeof trade.exitPrice === 'number' ? trade.exitPrice.toFixed(2) : trade.exitPrice) : '--'}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">Pips</div>
+                                <div class="price-value" style="color:${isWin ? 'var(--success)' : 'var(--danger)'}">${isWin ? '+' : ''}${trade.pips}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">Status</div>
+                                <div class="price-value" style="color:${isClosed ? (isWin ? 'var(--success)' : 'var(--danger)') : 'var(--primary)'}">${isClosed ? (isWin ? 'Won' : 'Lost') : 'Open'}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between">
+                            <span>&#x1F4C5; ${dateStr} &#x1F551; ${timeStr}</span>
+                            <span>R${Math.abs(trade.moneyMade || 0).toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+
+
+        function updateJournalSummary(data) {
+            const pipsEl = document.getElementById('journalPips');
+            pipsEl.textContent = `${data.totalPips >= 0 ? '+' : ''}${data.totalPips || 0}`;
+            pipsEl.style.color = data.totalPips >= 0 ? 'var(--primary)' : 'var(--danger)';
+
+            const modeEl = document.getElementById('journalMode');
+            if (currentTradingMode === 'aggressive') {
+                modeEl.textContent = 'AGGRESSIVE MODE';
+                modeEl.className = 'mode-badge aggressive';
+            } else {
+                modeEl.textContent = 'NORMAL MODE';
+                modeEl.className = 'mode-badge normal';
+            }
+
+            const totalTrades = (data.wins || 0) + (data.losses || 0);
+            document.getElementById('statWinRate').textContent = totalTrades > 0
+                ? `${Math.round(data.wins / totalTrades * 100)}%`
+                : '0%';
+            document.getElementById('statPnl').textContent = `${(data.totalMoney || 0) >= 0 ? '+' : ''}R${Math.abs(data.totalMoney || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('statPnl').style.color = data.totalMoney >= 0 ? 'var(--success)' : 'var(--danger)';
+            document.getElementById('statTotal').textContent = totalTrades;
+        }
+
+        function renderJournal() {
+            const container = document.getElementById('journalList');
+
+            let filtered = allTrades;
+            if (currentFilter === 'wins') filtered = allTrades.filter(t => t.pips > 0);
+            if (currentFilter === 'losses') filtered = allTrades.filter(t => t.pips <= 0);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#x1F4DC;</div>
+                        <div class="empty-text">No trades in journal</div>
+                        <div class="empty-subtext">Trades will appear here after the EA executes</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const wins = allTrades.filter(t => t.pips > 0).length;
+            const losses = allTrades.filter(t => t.pips <= 0).length;
+            const avgPips = allTrades.length > 0 ? Math.round(allTrades.reduce((sum, t) => sum + t.pips, 0) / allTrades.length) : 0;
+
+            container.innerHTML = filtered.map(trade => {
+                const date = new Date(trade.entryTime);
+                const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const isWin = trade.pips > 0;
+
+                return `
+                    <div class="trade-card-journal ${isWin ? 'win' : 'loss'}">
+                        <div class="trade-journal-header">
+                            <div class="trade-journal-time">
+                                <span>&#x1F4C5;</span> ${dateStr} <span>&#x1F551;</span> ${timeStr}
+                            </div>
+                            <div class="trade-journal-symbol">${trade.symbol}</div>
+                            <div class="trade-journal-type ${trade.type.toLowerCase()}">${trade.type}</div>
+                        </div>
+
+                        <div class="trade-journal-prices">
+                            <div class="price-item">
+                                <div class="price-label">Entry</div>
+                                <div class="price-value">${trade.entryPrice.toFixed(2)}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">Exit</div>
+                                <div class="price-value">${trade.exitPrice.toFixed(2)}</div>
+                            </div>
+                        </div>
+
+                        <div class="trade-journal-results">
+                            <div class="result-item">
+                                <span class="result-icon">${isWin ? '&#x1F4C8;' : '&#x1F4C9;'}</span>
+                                <span class="result-text result-pips ${isWin ? '' : 'neg'}">${isWin ? '+' : ''}${trade.pips} pips</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-icon">&#x1F4B0;</span>
+                                <span class="result-money ${isWin ? 'pos' : 'neg'}">R${Math.abs(trade.moneyMade).toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <div class="trade-journal-conditions">
+                            ${(trade.conditions || []).map(c => `
+                                <span class="condition-tag ${c.fulfilled ? 'fulfilled' : ''}">${c.name}: ${c.fulfilled ? '&#x2713;' : '&#x2717;'}</span>
+                            `).join('')}
+                        </div>
+
+                        <div class="trade-journal-result">
+                            <span class="result-reason-icon">${isWin ? '&#x2705;' : '&#x274C;'}</span>
+                            <span class="result-reason">${trade.resultReason || (isWin ? 'Take Profit Hit' : 'Stop Loss Hit')}</span>
+                        </div>
+
+                        ${trade.learning ? `
+                            <div class="trade-journal-learning">
+                                <span class="learning-icon">&#x1F4DA;</span>
+                                ${trade.learning}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('') + `
+                <div class="journal-stats">
+                    <div class="journal-stat">
+                        <div class="stat-num wins">${wins}</div>
+                        <div class="stat-label">Wins</div>
+                    </div>
+                    <div class="journal-stat">
+                        <div class="stat-num losses">${losses}</div>
+                        <div class="stat-label">Losses</div>
+                    </div>
+                    <div class="journal-stat">
+                        <div class="stat-num">${avgPips > 0 ? '+' : ''}${avgPips}</div>
+                        <div class="stat-label">Avg Pips</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function filterJournal() {
+            currentFilter = document.getElementById('journalFilter').value;
+            renderJournal();
+        }
+
+        const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        function updateMarketSessions() {
+            const now = new Date();
+            const utcHour = now.getUTCHours();
+            const utcMin = now.getUTCMinutes();
+            const utcSec = now.getUTCSeconds();
+            const utcDay = now.getUTCDay();
+
+            // Convert to UTC+2
+            let localHour = utcHour + 2;
+            let localDay = utcDay;
+            if (localHour >= 24) {
+                localHour -= 24;
+                localDay = (localDay + 1) % 7;
+            }
+
+            const localMinutes = localHour * 60 + utcMin;
+
+            // Update calendar display
+            const dateEl = document.getElementById('currentDate');
+            const timeEl = document.getElementById('currentTime');
+
+            const dayName = DAYS[localDay];
+            const date = now.getUTCDate();
+            const month = MONTHS[now.getUTCMonth()];
+            const year = now.getUTCFullYear();
+
+            dateEl.textContent = `${dayName}, ${date} ${month} ${year}`;
+
+            timeEl.textContent = `${String(localHour).padStart(2, '0')}:${String(utcMin).padStart(2, '0')}:${String(utcSec).padStart(2, '0')}`;
+
+            // Check weekend (Friday 23:00 - Sunday 23:59 UTC+2 = Friday 21:00 - Sunday 21:00 UTC)
+            const weekendBanner = document.getElementById('weekendBanner');
+            const isWeekend = (localDay === 0 || localDay === 6) || (localDay === 5 && localHour >= 23);
+
+            // Session times in UTC+2
+            // Asia: 01:00-09:00 UTC+2 = 23:00-07:00 UTC (previous day to morning)
+            // London: 08:00-17:00 UTC+2 = 06:00-15:00 UTC
+            // NY: 13:00-22:00 UTC+2 = 11:00-20:00 UTC
+
+            const sessions = [
+                { id: 'asia', start: 180, end: 540 },   // 03:00 - 11:00 UTC+2
+                { id: 'london', start: 600, end: 1140 }, // 10:00 - 19:00 UTC+2
+                { id: 'ny', start: 900, end: 1440 }       // 15:00 - 00:00 UTC+2
+            ];
+
+            const activeSessionIds = [];
+
+            // Show/hide weekend banner
+            if (isWeekend) {
+                weekendBanner.style.display = 'flex';
+                sessions.forEach(s => {
+                    const el = document.getElementById(s.id + 'Session');
+                    const statusEl = document.getElementById(s.id + 'Status');
+                    el.classList.remove('active');
+                    statusEl.className = 'session-status closed';
+                    statusEl.textContent = 'Weekend';
+                });
+            } else {
+                weekendBanner.style.display = 'none';
+
+                sessions.forEach(s => {
+                    const el = document.getElementById(s.id + 'Session');
+                    const statusEl = document.getElementById(s.id + 'Status');
+                    const isOpen = localMinutes >= s.start && localMinutes < s.end;
+
+                    el.classList.remove('active');
+                    statusEl.className = 'session-status ' + (isOpen ? 'open' : 'closed');
+                    statusEl.textContent = isOpen ? 'Open' : 'Closed';
+
+                    if (isOpen) {
+                        el.classList.add('active');
+                        activeSessionIds.push(s.id);
+                    }
+                });
+            }
+
+            const statusEl = document.getElementById('marketStatus');
+            const countdownSection = document.getElementById('countdownSection');
+
+            if (isWeekend) {
+                statusEl.textContent = 'MARKET CLOSED';
+                statusEl.className = 'market-status closed';
+                countdownSection.style.display = 'none';
+            } else if (activeSessionIds.length > 0) {
+                statusEl.textContent = 'MARKET OPEN';
+                statusEl.className = 'market-status open';
+                countdownSection.style.display = 'none';
+
+                activeSessionIds.forEach(id => {
+                    const el = document.getElementById(id + 'Session');
+                    const statusEl = document.getElementById(id + 'Status');
+                    el.classList.add('active');
+                    statusEl.className = 'session-status open';
+                    statusEl.textContent = 'TRADING';
+                });
+            } else {
+                statusEl.textContent = 'MARKET CLOSED';
+                statusEl.className = 'market-status closed';
+                countdownSection.style.display = 'block';
+
+                let nextSession = null;
+                let minDiff = Infinity;
+
+                sessions.forEach(s => {
+                    let diff;
+                    if (localMinutes < s.start) {
+                        diff = s.start - localMinutes;
+                    } else if (localMinutes >= s.end) {
+                        diff = (1440 - localMinutes) + s.start;
+                    } else {
+                        diff = Infinity;
+                    }
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        nextSession = s;
+                    }
+                });
+
+                if (nextSession) {
+                    const hours = Math.floor(minDiff / 60);
+                    const mins = minDiff % 60;
+                    const secs = (60 - utcSec) % 60;
+                    document.getElementById('countdownTimer').textContent =
+                        `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                }
+            }
+        }
+
+        let botMessageTimer = null;
+        let botMessageOverlay = false;
+
+        function dismissBotOverlay(runComplete) {
+            const overlay = document.getElementById('botMessageOverlay');
+            if (botMessageTimer) { clearTimeout(botMessageTimer); botMessageTimer = null; }
+            botMessageOverlay = false;
+            overlay.classList.remove('show');
+            overlay.style.opacity = '0';
+            document.getElementById('botSkipBtn').style.display = 'none';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 600);
+            return runComplete;
+        }
+
+        function skipBotMessages() {
+            dismissBotOverlay();
+        }
+
+        function showBotMessages(messages, onComplete) {
+            const overlay = document.getElementById('botMessageOverlay');
+            const text = document.getElementById('botMessageText');
+            const dots = document.querySelectorAll('.bot-dot');
+            let index = 0;
+            botMessageOverlay = true;
+            document.getElementById('botSkipBtn').style.display = 'block';
+
+            function showNext() {
+                if (!botMessageOverlay) return;
+                if (index >= messages.length) {
+                    onComplete = dismissBotOverlay(onComplete);
+                    botMessageTimer = setTimeout(() => {
+                        if (onComplete) onComplete();
+                    }, 600);
+                    return;
+                }
+
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '0';
+                text.textContent = messages[index];
+
+                dots.forEach((d, i) => d.classList.toggle('active', i === index));
+
+                requestAnimationFrame(() => {
+                    overlay.style.opacity = '1';
+                    overlay.classList.add('show');
+                });
+
+                botMessageTimer = setTimeout(() => {
+                    overlay.style.opacity = '0';
+                    index++;
+                    botMessageTimer = setTimeout(showNext, 600);
+                }, 8000);
+            }
+
+            showNext();
+        }
+
+        function handleLogout() {
+            showBotMessages(
+                ['Re lwele ntjaka lets try again tomorrow, tse pila fela, one LOVE'],
+                () => {
+                    token = null;
+                    session = null;
+                    localStorage.removeItem('userToken');
+                    localStorage.removeItem('bdSession');
+                    document.getElementById('dashboardScreen').classList.remove('active');
+                    document.getElementById('loginScreen').classList.add('active');
+                    goToStep(1);
+                    document.getElementById('credAccount').value = '';
+                    document.getElementById('credPassword').value = '';
+                    document.getElementById('credServer').value = '';
+                    document.getElementById('otpEmail').value = '';
+                    document.querySelectorAll('.otp-input').forEach(i => i.value = '');
+                    document.querySelectorAll('.broker-item').forEach(i => i.classList.remove('selected'));
+                    document.getElementById('brokerNextBtn').disabled = true;
+                    selectedBroker = null;
+                    overviewGreetingShown = false;
+                    journalGreetingShown = false;
+                }
+            );
+        }
+
+        let overviewGreetingShown = false;
+        let journalGreetingShown = false;
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+
+            if (tabName === 'overview' && !overviewGreetingShown) {
+                overviewGreetingShown = true;
+                showBotMessages([
+                    'Hi sir!! I hope you are doing good today, I am looking forward to making you some money today',
+                    'Are you ready??',
+                    'Now lets start'
+                ]);
+            }
+
+            if (tabName === 'journal' && !journalGreetingShown) {
+                journalGreetingShown = true;
+                showBotMessages([
+                    'Here is your initial balance and here is your total profit for the day!!',
+                    'I am sure you are happy as i am sir, Thank you for giving me this opportunity to prove myself to you',
+                    'We are going to achieve those goals together i promise you, Nthepe Brayaka, retlo fihla ko reyang ene sa fela pelo sa fela moya modimo oteng ophala baloyi',
+                    'Lets MAKE THIS MONEY!!!'
+                ]);
+            }
+        }
+
+        // Check existing session
+        if (session && session.verified && (Date.now() - session.loginTime < 86400000)) {
+            loadDashboard();
+        }
+
+        document.getElementById('credPassword').addEventListener('keypress', e => {
+            if (e.key === 'Enter') goToStep(3);
+        });
+        document.getElementById('otpEmail').addEventListener('keypress', e => {
+            if (e.key === 'Enter') sendOTP();
+        });
+    </script>
+
+    <!-- Bot Message Overlay -->
+    <div id="botMessageOverlay" class="bot-overlay">
+        <div class="bot-message-card">
+            <button class="bot-skip" id="botSkipBtn" onclick="skipBotMessages()">Skip &#x2716;</button>
+            <div class="bot-avatar">&#x1F916;</div>
+            <div class="bot-message" id="botMessageText"></div>
+            <div class="bot-dots" id="botDots">
+                <span class="bot-dot"></span>
+                <span class="bot-dot"></span>
+                <span class="bot-dot"></span>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
