@@ -3042,7 +3042,6 @@
                             isMobile: currentDevice.isMobile
                         });
                     }
-                    loadDevices();
                 });
 
                 socket.on('state_update', (data) => {
@@ -3093,16 +3092,20 @@
             }
         }
 
+        function showLocalDevice() {
+            if (!currentDevice) currentDevice = detectDevice();
+            renderDeviceList([]);
+        }
+
         async function loadDevices() {
+            const token = localStorage.getItem('userToken');
+            if (!token) return;
             try {
-                const token = localStorage.getItem('userToken');
-                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const headers = { Authorization: `Bearer ${token}` };
                 const response = await fetch(API_URL + '/auth/devices', { headers });
                 const data = await response.json();
                 renderDeviceList(data.devices || []);
-            } catch {
-                renderDeviceList([]);
-            }
+            } catch {}
         }
 
         function renderDeviceList(devices) {
@@ -3403,8 +3406,8 @@
             Promise.all([loadTradingMode(), loadAgentVoting()]).then(() => updateGodMode());
             loadEAStatus();
             runPeriodicProfitCheck();
+            showLocalDevice();
             initSocket();
-            loadDevices();
             updateMarketSessions();
             setInterval(updateMarketSessions, 1000);
 
@@ -3679,7 +3682,7 @@
                 setTimeout(() => {
                     overlay.style.display = 'none';
                 }, 400);
-            }, 5000);
+            }, 6000);
         }
 
         async function checkDailyProfit() {
@@ -4515,7 +4518,7 @@
                     overlay.style.opacity = '0';
                     index++;
                     botMessageTimer = setTimeout(showNext, 600);
-                }, 8000);
+                }, 6000);
             }
 
             showNext();
