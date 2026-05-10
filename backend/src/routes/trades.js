@@ -33,15 +33,25 @@ router.get('/stats', authMiddleware, async (req, res) => {
   }
 });
 
-// Get journal - last 7 days trades
+// Get journal - last 7 days or by month/year
 router.get('/journal', authMiddleware, async (req, res) => {
   try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    let dateFilter;
+    if (req.query.month && req.query.year) {
+      const year = parseInt(req.query.year);
+      const month = parseInt(req.query.month) - 1;
+      const start = new Date(year, month, 1);
+      const end = new Date(year, month + 1, 1);
+      dateFilter = { $gte: start, $lt: end };
+    } else {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      dateFilter = { $gte: sevenDaysAgo };
+    }
 
     const trades = await Trade.find({
       userId: req.userId,
-      entryTime: { $gte: sevenDaysAgo }
+      entryTime: dateFilter
     }).sort({ entryTime: -1 });
 
     // Calculate totals
@@ -60,10 +70,13 @@ router.get('/journal', authMiddleware, async (req, res) => {
       exitTime: t.exitTime,
       symbol: t.symbol,
       type: t.type,
+      lotSize: t.lotSize,
       entryPrice: t.entryPrice,
       exitPrice: t.exitPrice,
       pips: t.pips || 0,
       moneyMade: t.moneyMade || 0,
+      session: t.marketConditions?.session || '--',
+      candleType: t.marketConditions?.candleType || '--',
       conditions: [
         { name: 'Impulsive', fulfilled: t.marketConditions?.impulsive || false },
         { name: 'FVG Present', fulfilled: t.marketConditions?.fvgPresent || false },
@@ -74,7 +87,11 @@ router.get('/journal', authMiddleware, async (req, res) => {
       learning: t.learning,
       conditionsMet: t.conditionsMet,
       adaptiveMode: t.adaptiveMode,
-      riskUsed: t.riskUsed
+      riskUsed: t.riskUsed,
+      patternMatched: t.patternMatched,
+      confidenceScore: t.confidenceScore,
+      zoneType: t.zoneType,
+      pattern: t.pattern
     }));
 
     res.json({
