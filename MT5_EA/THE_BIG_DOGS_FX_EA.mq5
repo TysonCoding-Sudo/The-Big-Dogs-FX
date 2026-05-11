@@ -52,6 +52,12 @@ input int    ExtraSLPips        = 10;       // Extra buffer beyond zone (pips)
 input bool   UseStructureTP     = true;     // TP at next structure level
 input int    MinRRRatio         = 2;        // Minimum Risk:Reward ratio
 
+input group "=== NORMAL MODE SWING TRADES ==="
+input double   NormalWeeklyTarget     = 7000;    // Weekly profit target for normal mode (ZAR)
+input double   NormalBEThreshold      = 3500;    // Close swing trades at this profit on Friday
+input int      NormalSwingMagic       = 20250418; // Magic number for swing trades
+input int      NormalMaxSwingTrades   = 2;       // Max simultaneous swing trades
+
 input group "=== AGGRESSIVE MODE ==="
 input bool   AggressiveModeEnabled = false; // Enable aggressive mode (M1/M5)
 input ENUM_TIMEFRAMES AggressiveTimeframe = PERIOD_M5; // TF for aggressive

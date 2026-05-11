@@ -1,7 +1,41 @@
 const express = require('express');
 const router = express.Router();
+const { body, param, validationResult } = require('express-validator');
 const Trade = require('../models/Trade');
 const authMiddleware = require('../middleware/auth');
+const eaAuthMiddleware = require('../middleware/eaAuth');
+
+const sanitizeTradeInput = (input) => {
+  const type = (input.type || '').toUpperCase();
+  const validTypes = ['BUY', 'SELL'];
+  
+  return {
+    ticket: parseInt(input.ticket) || 0,
+    symbol: (input.symbol || '').toUpperCase().substring(0, 20),
+    type: validTypes.includes(type) ? type : 'BUY',
+    lotSize: Math.max(0, parseFloat(input.lotSize) || 0),
+    entryPrice: Math.max(0, parseFloat(input.entryPrice) || 0),
+    exitPrice: input.exitPrice ? Math.max(0, parseFloat(input.exitPrice)) : null,
+    pips: parseInt(input.pips) || 0,
+    moneyMade: parseFloat(input.moneyMade) || 0,
+    sl: input.sl ? Math.max(0, parseFloat(input.sl)) : null,
+    tp: input.tp ? Math.max(0, parseFloat(input.tp)) : null,
+    status: (input.status || 'open').toLowerCase() === 'closed' ? 'closed' : 'open',
+    entryTime: input.entryTime ? new Date(input.entryTime) : new Date(),
+    exitTime: input.exitTime ? new Date(input.exitTime) : null,
+    resultReason: input.resultReason ? String(input.resultReason).substring(0, 200) : null,
+    adaptiveMode: input.adaptiveMode === 'aggressive' ? 'aggressive' : 'normal',
+    confidenceScore: Math.min(100, Math.max(0, parseInt(input.confidenceScore) || 0)),
+    zoneType: ['supply', 'demand'].includes(input.zoneType) ? input.zoneType : null,
+    pattern: input.pattern ? String(input.pattern).substring(0, 100) : null,
+    marketConditions: {
+      session: input.session ? String(input.session).substring(0, 50) : null,
+      impulsive: false,
+      fvgPresent: false,
+      candleType: null
+    }
+  };
+};
 
 // Get all trades (legacy)
 router.get('/', authMiddleware, async (req, res) => {
@@ -162,6 +196,61 @@ router.get('/performance', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// EA trade report endpoint (called via WebRequest from MT5)
+router.post('/report', eaAuthMiddleware, [
+  body('ticket').isInt({ min: 1 }),
+  body('symbol').trim().isLength({ min: 1, max: 20 }),
+  body('type').isIn(['BUY', 'SELL', 'buy', 'sell']),
+  body('lotSize').optional().isFloat({ min: 0 }),
+  body('entryPrice').optional().isFloat({ min: 0 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Invalid trade data', errors: errors.array() });
+    }
+
+    const userId = req.userId;
+    
+    if (!userId && req.usesGlobalKey) {
+      return res.status(400).json({ 
+        message: 'Global EA key requires userId in request body. Please use per-user EA API keys instead.' 
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    const tradeData = sanitizeTradeInput(req.body);
+
+    const existingTrade = await Trade.findOne({ ticket: tradeData.ticket, userId });
+
+    let trade;
+    if (existingTrade) {
+      trade = await Trade.findOneAndUpdate(
+        { ticket: tradeData.ticket, userId },
+        { $set: tradeData },
+        { new: true, runValidators: true }
+      );
+    } else {
+      tradeData.userId = userId;
+      trade = await Trade.create(tradeData);
+    }
+
+    const io = req.io;
+    if (io && userId) {
+      io.to(userId.toString()).emit('trade_update', trade);
+      console.log(`Trade broadcast to user: ${userId}, ticket: ${tradeData.ticket}`);
+    }
+
+    res.json({ success: true, trade: { _id: trade._id, ticket: trade.ticket, symbol: trade.symbol } });
+  } catch (error) {
+    console.error('Trade report error:', error);
+    res.status(500).json({ message: 'Failed to process trade report' });
   }
 });
 

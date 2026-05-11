@@ -2447,13 +2447,7 @@
                     <p class="success-msg" id="emailSuccess"></p>
                     <button class="btn" id="sendOtpBtn" onclick="sendOTP()">SEND VERIFICATION CODE</button>
 
-                    <div id="otpDisplayCard" class="otp-display-card" style="display:none;">
-                        <div class="otp-display-icon">&#x1F512;</div>
-                        <div class="otp-display-title">Verification Code</div>
-                        <div class="otp-display-code" id="otpDisplayCode">------</div>
-                        <div class="otp-display-note">Enter this code on the next screen</div>
-                        <button class="btn" onclick="goToOtpStep()">I HAVE THE CODE &#x2192;</button>
-                    </div>
+    
 
                     <button class="btn-back" onclick="goToStep(2)">&#x2190; Back to credentials</button>
                 </div>
@@ -2983,7 +2977,6 @@
         const WS_URL = API_URL ? API_URL.replace('/api', '').replace('https', 'wss').replace('http', 'ws') : null;
         let token = localStorage.getItem('userToken');
         let session = JSON.parse(localStorage.getItem('bdSession') || 'null');
-        let generatedOTP = '';
         let resendTimerInterval = null;
 
         // ===== EA STATE =====
@@ -3025,23 +3018,38 @@
         function initSocket() {
             if (!WS_URL || socket) return;
             currentDevice = detectDevice();
+            
+            const userToken = localStorage.getItem('userToken');
+            if (!userToken) {
+                console.log('No token for socket auth - socket not initialized');
+                return;
+            }
+
             try {
-                socket = io(WS_URL, { transports: ['websocket', 'polling'] });
+                socket = io(WS_URL, { 
+                    transports: ['websocket', 'polling'],
+                    auth: {
+                        token: userToken
+                    }
+                });
 
                 socket.on('connect', () => {
                     console.log('Socket connected:', socket.id);
                     const userId = (session && session.userId) || (session && session.email) || null;
                     if (userId) {
                         if (!session.userId) session.userId = userId;
-                        socket.emit('join', userId);
                         socket.emit('register_device', {
-                            userId: userId,
                             deviceType: currentDevice.type,
                             deviceName: currentDevice.name,
                             os: currentDevice.os,
                             isMobile: currentDevice.isMobile
                         });
                     }
+                });
+
+                socket.on('connect_error', (err) => {
+                    console.error('Socket connection error:', err.message);
+                    socket = null;
                 });
 
                 socket.on('state_update', (data) => {
@@ -3254,14 +3262,16 @@
         }
 
         // ===== OTP =====
-        function generateOTP() {
-            return Math.floor(100000 + Math.random() * 900000).toString();
-        }
+        let pendingEmail = '';
 
         async function sendOTP() {
             const email = document.getElementById('otpEmail').value.trim();
             const errorEl = document.getElementById('emailError');
             const successEl = document.getElementById('emailSuccess');
+            const sendBtn = document.getElementById('sendOtpBtn');
+
+            errorEl.classList.remove('show');
+            successEl.classList.remove('show');
 
             if (!email || !email.includes('@')) {
                 errorEl.textContent = 'Please enter a valid email address';
@@ -3269,25 +3279,49 @@
                 return;
             }
 
-            generatedOTP = generateOTP();
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            pendingEmail = email;
 
-            document.getElementById('sendOtpBtn').style.display = 'none';
-            document.getElementById('otpDisplayCode').textContent = generatedOTP;
-            document.getElementById('otpDisplayCard').style.display = 'block';
-            document.getElementById('otpRevealCode').textContent = generatedOTP;
-
-            // Try backend in background — code is already visible
             try {
-                await fetch(API_URL + '/auth/send-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, otp: generatedOTP })
-                });
-            } catch {}
-        }
+                if (API_URL) {
+                    const response = await fetch(API_URL + '/auth/send-otp', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ email })
+                    });
 
-        function goToOtpStep() {
-            goToStep(4);
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        successEl.textContent = 'Verification code sent! Check your email.';
+                        successEl.classList.add('show');
+                        sendBtn.textContent = 'RESEND CODE';
+                        goToStep(4);
+                    } else {
+                        errorEl.textContent = data.message || 'Failed to send code. Please try again.';
+                        errorEl.classList.add('show');
+                        sendBtn.disabled = false;
+                        sendBtn.textContent = 'SEND VERIFICATION CODE';
+                    }
+                } else {
+                    successEl.textContent = 'Demo mode: Use code 123456 (check console for dev OTP if backend running)';
+                    successEl.classList.add('show');
+                    sendBtn.textContent = 'RESEND CODE';
+                    console.log('[DEMO MODE] OTP verification disabled. Use any 6-digit code to proceed, or 123456.');
+                    goToStep(4);
+                }
+            } catch (error) {
+                console.log('OTP send failed (offline mode):', error);
+                successEl.textContent = 'Offline mode: Use code 123456';
+                successEl.classList.add('show');
+                sendBtn.textContent = 'RESEND CODE';
+                goToStep(4);
+            }
+
             startResendTimer();
         }
 
@@ -3303,34 +3337,50 @@
             let seconds = 60;
             const btn = document.getElementById('resendBtn');
             const timer = document.getElementById('resendTimer');
-            btn.disabled = true;
-            timer.textContent = `Resend in ${seconds}s`;
+            const sendBtn = document.getElementById('sendOtpBtn');
+            
+            if (btn) {
+                btn.disabled = true;
+            }
+            if (sendBtn) {
+                sendBtn.disabled = true;
+            }
+            if (timer) {
+                timer.textContent = `Resend in ${seconds}s`;
+            }
 
             if (resendTimerInterval) clearInterval(resendTimerInterval);
             resendTimerInterval = setInterval(() => {
                 seconds--;
-                timer.textContent = `Resend in ${seconds}s`;
+                if (timer) {
+                    timer.textContent = `Resend in ${seconds}s`;
+                }
                 if (seconds <= 0) {
                     clearInterval(resendTimerInterval);
-                    btn.disabled = false;
-                    timer.textContent = '';
+                    if (btn) btn.disabled = false;
+                    if (sendBtn) sendBtn.disabled = false;
+                    if (timer) timer.textContent = '';
                 }
             }, 1000);
         }
 
         async function resendOTP() {
-            generatedOTP = generateOTP();
+            const email = pendingEmail || document.getElementById('otpEmail').value.trim();
+            if (!email) return;
+
             try {
-                await fetch(API_URL + '/auth/send-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: document.getElementById('otpEmail').value, otp: generatedOTP })
-                });
-            } catch {
-                // Update displayed code on both cards
-                document.getElementById('otpDisplayCode').textContent = generatedOTP;
-                document.getElementById('otpRevealCode').textContent = generatedOTP;
-            }
+                if (API_URL) {
+                    await fetch(API_URL + '/auth/send-otp', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ email })
+                    });
+                }
+            } catch {}
+            
             startResendTimer();
         }
 
@@ -3347,26 +3397,69 @@
             }
         }
 
-        function verifyOTP() {
+        async function verifyOTP() {
             const inputs = document.querySelectorAll('.otp-input');
             let code = '';
             inputs.forEach(i => code += i.value);
 
+            const errorEl = document.getElementById('otpError');
+            const successEl = document.getElementById('otpSuccess');
+
+            errorEl.classList.remove('show');
+            successEl.classList.remove('show');
+
             if (code.length !== 6) {
-                document.getElementById('otpError').textContent = 'Please enter the full 6-digit code';
-                document.getElementById('otpError').classList.add('show');
+                errorEl.textContent = 'Please enter the full 6-digit code';
+                errorEl.classList.add('show');
                 return;
             }
 
-            if (code !== generatedOTP) {
-                document.getElementById('otpError').textContent = 'Invalid code. Please try again.';
-                document.getElementById('otpError').classList.add('show');
-                return;
+            const email = pendingEmail || document.getElementById('otpEmail').value.trim();
+
+            successEl.textContent = 'Verifying...';
+            successEl.classList.add('show');
+
+            try {
+                if (API_URL) {
+                    const response = await fetch(API_URL + '/auth/verify-otp', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ email, otp: code })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        errorEl.textContent = data.message || 'Invalid code. Please try again.';
+                        errorEl.classList.add('show');
+                        successEl.classList.remove('show');
+                        inputs.forEach(i => i.value = '');
+                        if (inputs[0]) inputs[0].focus();
+                        return;
+                    }
+                } else {
+                    if (code !== '123456' && code.length !== 6) {
+                        errorEl.textContent = 'Invalid demo code. Use 123456.';
+                        errorEl.classList.add('show');
+                        successEl.classList.remove('show');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.log('OTP verification failed (offline):', error);
+                if (code !== '123456') {
+                    errorEl.textContent = 'Offline mode: Use code 123456';
+                    errorEl.classList.add('show');
+                    successEl.classList.remove('show');
+                    return;
+                }
             }
 
-            document.getElementById('otpSuccess').textContent = 'Verified! Logging in...';
-            document.getElementById('otpSuccess').classList.add('show');
-            document.getElementById('otpError').classList.remove('show');
+            successEl.textContent = 'Verified! Logging in...';
+            errorEl.classList.remove('show');
 
             const account = document.getElementById('credAccount').value;
             const server = document.getElementById('credServer').value;
@@ -3375,7 +3468,7 @@
                 broker: selectedBroker,
                 account: account,
                 server: server,
-                email: document.getElementById('otpEmail').value,
+                email: email,
                 verified: true,
                 loginTime: Date.now()
             };

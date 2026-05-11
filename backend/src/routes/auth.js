@@ -93,42 +93,83 @@ router.get('/profile', authMiddleware, async (req, res) => {
   }
 });
 
-router.put('/settings', authMiddleware, async (req, res) => {
+const ALLOWED_SETTINGS_FIELDS = [
+  'riskSettings.riskPercent',
+  'riskSettings.maxTrades',
+  'riskSettings.maxSpread'
+];
+
+function sanitizeSettingsUpdate(body) {
+  const update = {};
+  
+  if (body.riskSettings && typeof body.riskSettings === 'object') {
+    update.riskSettings = {};
+    if (typeof body.riskSettings.riskPercent === 'number' && body.riskSettings.riskPercent >= 0 && body.riskSettings.riskPercent <= 100) {
+      update.riskSettings.riskPercent = body.riskSettings.riskPercent;
+    }
+    if (typeof body.riskSettings.maxTrades === 'number' && body.riskSettings.maxTrades >= 0 && body.riskSettings.maxTrades <= 50) {
+      update.riskSettings.maxTrades = body.riskSettings.maxTrades;
+    }
+    if (typeof body.riskSettings.maxSpread === 'number' && body.riskSettings.maxSpread >= 0) {
+      update.riskSettings.maxSpread = body.riskSettings.maxSpread;
+    }
+  }
+  
+  return update;
+}
+
+router.put('/settings', authMiddleware, [
+  body('riskSettings').optional().isObject(),
+  body('riskSettings.riskPercent').optional().isFloat({ min: 0, max: 100 }),
+  body('riskSettings.maxTrades').optional().isInt({ min: 0, max: 50 }),
+  body('riskSettings.maxSpread').optional().isFloat({ min: 0 })
+], async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Invalid settings values' });
+    }
+
+    const update = sanitizeSettingsUpdate(req.body);
+    
+    if (Object.keys(update).length === 0) {
+      const user = await User.findById(req.userId).select('-password');
+      return res.json(user);
+    }
+
     const user = await User.findByIdAndUpdate(
       req.userId,
-      { $set: req.body },
-      { new: true }
+      { $set: update },
+      { new: true, runValidators: true }
     ).select('-password');
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Failed to update settings' });
   }
 });
 
 router.post('/send-otp', [
-  body('email').isEmail(),
-  body('otp').isLength({ min: 6, max: 6 })
+  body('email').isEmail().normalizeEmail()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ message: 'Please enter a valid email address' });
     }
 
-    const { email, otp } = req.body;
-    const result = await otpService.sendOTP(email, otp);
+    const { email } = req.body;
+    const result = await otpService.sendOTP(email);
 
     if (result.success) {
-      res.json({ message: 'OTP sent successfully' });
+      res.json({ message: 'Verification code sent to your email' });
     } else {
-      res.status(500).json({ message: 'Failed to send OTP' });
+      res.status(429).json({ message: result.error || 'Failed to send verification code' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Server error. Please try again.' });
   }
 });
 
@@ -191,7 +232,7 @@ router.post('/trading-mode', authMiddleware, async (req, res) => {
 
     // Broadcast to all connected devices
     try {
-      const io = req.app.get('io');
+      const io = req.io;
       if (io) io.to(req.userId.toString()).emit('state_update', { type: 'tradingMode', value: mode });
     } catch (e) {}
 
@@ -234,7 +275,7 @@ router.post('/multi-agent-voting', authMiddleware, async (req, res) => {
 
     // Broadcast to all connected devices
     try {
-      const io = req.app.get('io');
+      const io = req.io;
       if (io) io.to(req.userId.toString()).emit('state_update', { type: 'agentVoting', value: enabled });
     } catch (e) {}
 
@@ -289,7 +330,7 @@ router.post('/ea-status', authMiddleware, async (req, res) => {
 
     // Broadcast to all connected devices
     try {
-      const io = req.app.get('io');
+      const io = req.io;
       if (io) io.to(req.userId.toString()).emit('state_update', { type: 'eaActive', value: eaActive });
     } catch (e) {}
 
@@ -307,6 +348,54 @@ router.get('/devices', authMiddleware, async (req, res) => {
     res.json({ devices });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// EA API Key Management
+router.get('/ea-api-key', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('+eaApiKeyHash eaApiKeyLastGenerated');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.json({
+      hasKey: !!user.eaApiKeyHash,
+      lastGenerated: user.eaApiKeyLastGenerated || null
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/ea-api-key/generate', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('+eaApiKeyHash');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const newKey = user.generateEAAPIKey();
+    await user.save();
+
+    res.json({
+      apiKey: newKey,
+      lastGenerated: user.eaApiKeyLastGenerated,
+      warning: 'Store this key securely - it will not be shown again.'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to generate API key' });
+  }
+});
+
+router.post('/ea-api-key/revoke', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.eaApiKeyHash = undefined;
+    user.eaApiKeyLastGenerated = undefined;
+    await user.save();
+
+    res.json({ message: 'EA API key revoked successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to revoke API key' });
   }
 });
 
