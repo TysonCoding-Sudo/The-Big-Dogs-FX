@@ -142,7 +142,7 @@ const otpService = {
         attempts: 0
       });
 
-      return { success: true };
+      return { success: true, otp };
     } catch (error) {
       console.error('Email send failed:', error.message);
       return { success: false, error: 'Failed to send verification code. Please try again.' };

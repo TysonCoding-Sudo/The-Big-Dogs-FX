@@ -1729,36 +1729,52 @@
             color: var(--text-muted);
             margin-bottom: 18px;
         }
-        .otp-show-code {
+        /* OTP Code Box */
+        .otp-code-box {
+            display: none;
+            margin: 24px auto;
+            padding: 24px 20px;
+            background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.02));
+            border: 2px solid rgba(255,215,0,0.3);
+            border-radius: var(--radius-lg);
             text-align: center;
-            margin-top: 16px;
+            max-width: 320px;
+            box-shadow: 0 0 40px rgba(255,215,0,0.1), inset 0 0 40px rgba(255,215,0,0.03);
+            animation: fadeInUp 0.4s ease;
         }
-        .otp-show-btn {
-            background: none;
-            border: none;
+        .otp-code-box.show {
+            display: block;
+        }
+        .otp-code-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 0 12px rgba(255,215,0,0.3));
+        }
+        .otp-code-title {
+            font-size: 12px;
             color: var(--text-muted);
-            font-size: 13px;
-            cursor: pointer;
-            padding: 8px 16px;
-            border-radius: var(--radius-sm);
-            transition: all 0.2s;
-            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+            margin-bottom: 14px;
         }
-        .otp-show-btn:hover { color: var(--primary); background: rgba(255,215,0,0.08); }
-        .otp-code-reveal {
-            margin-top: 10px;
-            padding: 12px;
-            background: rgba(255,215,0,0.06);
-            border: 1px solid rgba(255,215,0,0.15);
-            border-radius: var(--radius-md);
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-        .otp-code-reveal strong {
-            font-size: 24px;
-            letter-spacing: 4px;
+        .otp-code-value {
+            font-size: 38px;
+            font-weight: 900;
+            letter-spacing: 10px;
             color: var(--primary);
             font-family: 'JetBrains Mono', 'SF Mono', monospace;
+            padding: 14px 10px;
+            background: rgba(0,0,0,0.35);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,215,0,0.15);
+            text-shadow: 0 0 30px rgba(255,215,0,0.25);
+        }
+        .otp-code-note {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 12px;
+            font-weight: 500;
         }
 
         .bot-overlay {
@@ -2479,11 +2495,11 @@
                     <p class="success-msg" id="otpSuccess"></p>
                     <button class="btn" onclick="verifyOTP()">VERIFY & LOGIN</button>
 
-                    <div class="otp-show-code">
-                        <button class="otp-show-btn" id="otpShowBtn" onclick="toggleOtpCode()">&#x1F441; Show code</button>
-                        <div class="otp-code-reveal" id="otpCodeReveal" style="display:none;">
-                            Your code: <strong id="otpRevealCode">------</strong>
-                        </div>
+                    <div class="otp-code-box" id="otpCodeBox">
+                        <div class="otp-code-icon">&#x1F512;</div>
+                        <div class="otp-code-title">Your Verification Code</div>
+                        <div class="otp-code-value" id="otpCodeValue">------</div>
+                        <div class="otp-code-note">This code expires in 5 minutes</div>
                     </div>
 
                     <div class="resend-otp">
@@ -2590,7 +2606,7 @@
                             <div class="calendar-time">
                                 <span class="time-icon">&#x1F551;</span>
                                 <span id="currentTime">--:--:--</span>
-                                <span class="time-zone">UTC+2</span>
+                                <span class="time-zone">UTC-4</span>
                             </div>
                         </div>
                         <div id="weekendBanner" class="weekend-banner" style="display:none;">
@@ -3240,6 +3256,7 @@
             if (step === 4) {
                 document.getElementById('otpEmailDisplay').textContent = document.getElementById('otpEmail').value;
                 startResendTimer();
+                if (pendingOtp) showOtpAutomatically();
             }
 
             document.getElementById('brokerError').classList.remove('show');
@@ -3263,6 +3280,7 @@
 
         // ===== OTP =====
         let pendingEmail = '';
+        let pendingOtp = '';
 
         async function sendOTP() {
             const email = document.getElementById('otpEmail').value.trim();
@@ -3300,7 +3318,9 @@
                         successEl.textContent = 'Verification code sent! Check your email.';
                         successEl.classList.add('show');
                         sendBtn.textContent = 'RESEND CODE';
+                        if (data.otp) pendingOtp = data.otp;
                         goToStep(4);
+                        if (pendingOtp) showOtpAutomatically();
                     } else {
                         errorEl.textContent = data.message || 'Failed to send code. Please try again.';
                         errorEl.classList.add('show');
@@ -3312,25 +3332,41 @@
                     successEl.classList.add('show');
                     sendBtn.textContent = 'RESEND CODE';
                     console.log('[DEMO MODE] OTP verification disabled. Use any 6-digit code to proceed, or 123456.');
+                    pendingOtp = '123456';
                     goToStep(4);
+                    if (pendingOtp) showOtpAutomatically();
                 }
             } catch (error) {
                 console.log('OTP send failed (offline mode):', error);
                 successEl.textContent = 'Offline mode: Use code 123456';
                 successEl.classList.add('show');
                 sendBtn.textContent = 'RESEND CODE';
+                pendingOtp = '123456';
                 goToStep(4);
+                if (pendingOtp) showOtpAutomatically();
             }
 
             startResendTimer();
         }
 
-        function toggleOtpCode() {
-            const reveal = document.getElementById('otpCodeReveal');
-            const btn = document.getElementById('otpShowBtn');
-            const isHidden = reveal.style.display === 'none';
-            reveal.style.display = isHidden ? 'block' : 'none';
-            btn.innerHTML = isHidden ? '&#x1F441; Hide code' : '&#x1F441; Show code';
+        function showOtpAutomatically() {
+            const box = document.getElementById('otpCodeBox');
+            const codeEl = document.getElementById('otpCodeValue');
+            if (!box || !codeEl) {
+                console.log('OTP box elements not found, retrying...');
+                setTimeout(showOtpAutomatically, 100);
+                return;
+            }
+            codeEl.textContent = pendingOtp;
+            box.classList.add('show');
+
+            // Auto-fill the OTP input fields
+            const inputs = document.querySelectorAll('.otp-input');
+            for (let i = 0; i < inputs.length; i++) {
+                inputs[i].value = pendingOtp[i] || '';
+            }
+            // Focus the verify button or last input
+            if (inputs[5]) inputs[5].focus();
         }
 
         function startResendTimer() {
@@ -3370,7 +3406,7 @@
 
             try {
                 if (API_URL) {
-                    await fetch(API_URL + '/auth/send-otp', {
+                    const response = await fetch(API_URL + '/auth/send-otp', {
                         method: 'POST',
                         headers: { 
                             'Content-Type': 'application/json',
@@ -3378,6 +3414,9 @@
                         },
                         body: JSON.stringify({ email })
                     });
+                    const data = await response.json();
+                    if (data.otp) pendingOtp = data.otp;
+                    if (pendingOtp) showOtpAutomatically();
                 }
             } catch {}
             
@@ -3926,9 +3965,9 @@
                     document.getElementById('statOpen').textContent = '0';
                 }
             }
-            // Preload current month trades for calendar (UTC+2)
-            const initUtc2 = getUTC2Date();
-            loadMonthTrades(initUtc2.month, initUtc2.year);
+            // Preload current month trades for calendar (UTC-4 / NYSE)
+            const initET = getETDate();
+            loadMonthTrades(initET.month, initET.year);
         }
 
         async function loadMonthTrades(month, year) {
@@ -4123,32 +4162,32 @@
             renderJournal();
         }
 
-        // ===== CALENDAR VIEW (UTC+2) =====
-        function getUTC2Date() {
+        // ===== CALENDAR VIEW (UTC-4 / NYSE) =====
+        function getETDate() {
             const now = new Date();
-            const utc2 = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+            const et = new Date(now.getTime() - 4 * 60 * 60 * 1000);
             return {
-                year: utc2.getUTCFullYear(),
-                month: utc2.getUTCMonth(),
-                day: utc2.getUTCDate(),
-                dayOfWeek: utc2.getUTCDay(),
-                hour: utc2.getUTCHours(),
-                minute: utc2.getUTCMinutes()
+                year: et.getUTCFullYear(),
+                month: et.getUTCMonth(),
+                day: et.getUTCDate(),
+                dayOfWeek: et.getUTCDay(),
+                hour: et.getUTCHours(),
+                minute: et.getUTCMinutes()
             };
         }
-        function toUTC2(dateStr) {
+        function toET(dateStr) {
             const d = new Date(dateStr);
-            const utc2 = new Date(d.getTime() + 2 * 60 * 60 * 1000);
+            const et = new Date(d.getTime() - 4 * 60 * 60 * 1000);
             return {
-                year: utc2.getUTCFullYear(),
-                month: utc2.getUTCMonth(),
-                day: utc2.getUTCDate(),
-                dayOfWeek: utc2.getUTCDay()
+                year: et.getUTCFullYear(),
+                month: et.getUTCMonth(),
+                day: et.getUTCDate(),
+                dayOfWeek: et.getUTCDay()
             };
         }
-        const utc2Now = getUTC2Date();
-        let calendarMonth = utc2Now.month;
-        let calendarYear = utc2Now.year;
+        const etNow = getETDate();
+        let calendarMonth = etNow.month;
+        let calendarYear = etNow.year;
         let selectedDayTrades = null;
         let selectedDayStr = '';
 
@@ -4182,7 +4221,7 @@
 
         function getTradesForDay(day) {
             return allMonthTrades.filter(t => {
-                const u = toUTC2(t.entryTime);
+                const u = toET(t.entryTime);
                 return u.day === day && u.month === calendarMonth && u.year === calendarYear;
             });
         }
@@ -4191,10 +4230,10 @@
             const container = document.getElementById('tradingCalendar');
             document.getElementById('calendarLabel').textContent = MONTHS[calendarMonth] + ' ' + calendarYear;
 
-            const utc2Now = getUTC2Date();
-            const today = utc2Now.day;
-            const thisMonth = utc2Now.month;
-            const thisYear = utc2Now.year;
+            const etNow = getETDate();
+            const today = etNow.day;
+            const thisMonth = etNow.month;
+            const thisYear = etNow.year;
 
             const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
             const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
@@ -4437,42 +4476,43 @@
             const utcSec = now.getUTCSeconds();
             const utcDay = now.getUTCDay();
 
-            // Convert to UTC+2
-            let localHour = utcHour + 2;
+            // Convert to UTC-4 (NYSE / Eastern Time)
+            let localHour = utcHour - 4;
             let localDay = utcDay;
-            if (localHour >= 24) {
-                localHour -= 24;
-                localDay = (localDay + 1) % 7;
+            if (localHour < 0) {
+                localHour += 24;
+                localDay = (localDay + 6) % 7;
             }
 
             const localMinutes = localHour * 60 + utcMin;
 
-            // Update calendar display
+            // Update calendar display using UTC-4 date
             const dateEl = document.getElementById('currentDate');
             const timeEl = document.getElementById('currentTime');
 
+            const et = getETDate();
             const dayName = DAYS[localDay];
-            const date = now.getUTCDate();
-            const month = MONTHS[now.getUTCMonth()];
-            const year = now.getUTCFullYear();
+            const date = et.day;
+            const month = MONTHS[et.month];
+            const year = et.year;
 
             dateEl.textContent = `${dayName}, ${date} ${month} ${year}`;
 
             timeEl.textContent = `${String(localHour).padStart(2, '0')}:${String(utcMin).padStart(2, '0')}:${String(utcSec).padStart(2, '0')}`;
 
-            // Check weekend (Friday 23:00 - Sunday 23:59 UTC+2 = Friday 21:00 - Sunday 21:00 UTC)
+            // Check weekend (Friday 17:00 - Sunday 23:59 UTC-4)
             const weekendBanner = document.getElementById('weekendBanner');
-            const isWeekend = (localDay === 0 || localDay === 6) || (localDay === 5 && localHour >= 23);
+            const isWeekend = (localDay === 0 || localDay === 6) || (localDay === 5 && localHour >= 17);
 
-            // Session times in UTC+2
-            // Asia: 01:00-09:00 UTC+2 = 23:00-07:00 UTC (previous day to morning)
-            // London: 08:00-17:00 UTC+2 = 06:00-15:00 UTC
-            // NY: 13:00-22:00 UTC+2 = 11:00-20:00 UTC
+            // Session times in UTC-4 (NYSE / Eastern Time)
+            // Asia: 21:00-05:00 UTC-4 (wraps midnight)
+            // London: 04:00-13:00 UTC-4
+            // NY: 09:00-18:00 UTC-4
 
             const sessions = [
-                { id: 'asia', start: 180, end: 540 },   // 03:00 - 11:00 UTC+2
-                { id: 'london', start: 600, end: 1140 }, // 10:00 - 19:00 UTC+2
-                { id: 'ny', start: 900, end: 1440 }       // 15:00 - 00:00 UTC+2
+                { id: 'asia', start: 1260, end: 300 }, // 21:00 - 05:00 UTC-4 (wrap-around)
+                { id: 'london', start: 240, end: 780 }, // 04:00 - 13:00 UTC-4
+                { id: 'ny', start: 540, end: 1080 }     // 09:00 - 18:00 UTC-4
             ];
 
             const activeSessionIds = [];
@@ -4493,7 +4533,9 @@
                 sessions.forEach(s => {
                     const el = document.getElementById(s.id + 'Session');
                     const statusEl = document.getElementById(s.id + 'Status');
-                    const isOpen = localMinutes >= s.start && localMinutes < s.end;
+                    const isOpen = s.start <= s.end
+                        ? (localMinutes >= s.start && localMinutes < s.end)
+                        : (localMinutes >= s.start || localMinutes < s.end);
 
                     el.classList.remove('active');
                     statusEl.className = 'session-status ' + (isOpen ? 'open' : 'closed');
@@ -4535,12 +4577,21 @@
 
                 sessions.forEach(s => {
                     let diff;
-                    if (localMinutes < s.start) {
-                        diff = s.start - localMinutes;
-                    } else if (localMinutes >= s.end) {
-                        diff = (1440 - localMinutes) + s.start;
+                    if (s.start <= s.end) {
+                        if (localMinutes < s.start) {
+                            diff = s.start - localMinutes;
+                        } else if (localMinutes >= s.end) {
+                            diff = (1440 - localMinutes) + s.start;
+                        } else {
+                            diff = Infinity;
+                        }
                     } else {
-                        diff = Infinity;
+                        // Wrap-around session (Asia: 21:00-05:00)
+                        if (localMinutes >= s.end && localMinutes < s.start) {
+                            diff = s.start - localMinutes;
+                        } else {
+                            diff = Infinity;
+                        }
                     }
                     if (diff < minDiff) {
                         minDiff = diff;

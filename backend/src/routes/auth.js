@@ -164,7 +164,11 @@ router.post('/send-otp', [
     const result = await otpService.sendOTP(email);
 
     if (result.success) {
-      res.json({ message: 'Verification code sent to your email' });
+      const response = { message: 'Verification code sent to your email' };
+      if (process.env.NODE_ENV !== 'production') {
+        response.otp = result.otp;
+      }
+      res.json(response);
     } else {
       res.status(429).json({ message: result.error || 'Failed to send verification code' });
     }
