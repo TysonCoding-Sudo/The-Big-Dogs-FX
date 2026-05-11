@@ -2286,6 +2286,127 @@
             .content { max-width: 960px; margin: 0 auto; width: 100%; }
             .session-tracker, .card, .account-summary, .deposits-section { padding: 28px; }
         }
+
+        /* ===== Manual Trade Panel ===== */
+        .manual-trade-panel {
+            margin-bottom: 16px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+        .manual-trade-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 20px;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: inherit;
+        }
+        .manual-trade-toggle:hover { background: rgba(255,255,255,0.03); }
+        .manual-trade-arrow { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+        .manual-trade-form {
+            padding: 0 20px 20px;
+        }
+        .manual-trade-row {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .manual-trade-field {
+            flex: 1;
+            min-width: 0;
+        }
+        .manual-trade-field label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .manual-trade-field input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .manual-trade-field input:focus { border-color: var(--primary); }
+        .manual-trade-type-group { display: flex; gap: 6px; }
+        .mt-type-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: var(--radius-sm);
+            background: var(--bg-input);
+            color: var(--text-muted);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .mt-type-btn.active { border-color: var(--primary); color: var(--primary); background: rgba(255,215,0,0.08); }
+        .mt-type-btn:hover { border-color: var(--primary); }
+        .manual-trade-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-top: 4px;
+        }
+        .btn-manual-submit {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 800;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-manual-submit:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .manual-trade-msg { font-size: 12px; font-weight: 600; }
+        .manual-trade-msg.success { color: var(--success); }
+        .manual-trade-msg.error { color: var(--danger); }
+
+        /* ===== Source Badge (EA / Manual) ===== */
+        .source-badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 10px;
+            letter-spacing: 0.3px;
+            margin-left: 6px;
+            white-space: nowrap;
+        }
+        .source-ea {
+            background: rgba(0, 122, 255, 0.15);
+            color: #5ac8fa;
+            border: 1px solid rgba(0, 122, 255, 0.2);
+        }
+        .source-manual {
+            background: rgba(52, 199, 89, 0.15);
+            color: #34c759;
+            border: 1px solid rgba(52, 199, 89, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -2304,8 +2425,6 @@
                 <div id="step1Broker">
                     <div class="progress-steps">
                         <div class="step-dot active"></div>
-                        <div class="step-dot"></div>
-                        <div class="step-dot"></div>
                         <div class="step-dot"></div>
                     </div>
                     <div class="step-title">Select Your Broker</div>
@@ -2399,8 +2518,6 @@
                     <div class="progress-steps">
                         <div class="step-dot completed"></div>
                         <div class="step-dot active"></div>
-                        <div class="step-dot"></div>
-                        <div class="step-dot"></div>
                     </div>
 
                     <div id="selectedBrokerDisplay" class="selected-broker">
@@ -2437,77 +2554,14 @@
                             <option value="Real">Real Account</option>
                         </select>
                     </div>
-
-                    <p class="error-msg" id="credError"></p>
-                    <button class="btn" onclick="goToStep(3)">NEXT</button>
-                    <button class="btn-back" onclick="goToStep(1)">&#x2190; Back to broker selection</button>
-                </div>
-
-                <!-- STEP 3: Email for OTP -->
-                <div id="step3Email" style="display: none;">
-                    <div class="progress-steps">
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot active"></div>
-                        <div class="step-dot"></div>
-                    </div>
-                    <div class="step-title">Verify It's You</div>
-                    <div class="step-subtitle">Enter your email to receive a verification code</div>
-
                     <div class="form-group">
                         <label>Email Address</label>
-                        <input type="email" id="otpEmail" placeholder="your@email.com" inputmode="email">
+                        <input type="email" id="credEmail" placeholder="your@email.com" inputmode="email">
                     </div>
 
-                    <p class="error-msg" id="emailError"></p>
-                    <p class="success-msg" id="emailSuccess"></p>
-                    <button class="btn" id="sendOtpBtn" onclick="sendOTP()">SEND VERIFICATION CODE</button>
-
-    
-
-                    <button class="btn-back" onclick="goToStep(2)">&#x2190; Back to credentials</button>
-                </div>
-
-                <!-- STEP 4: OTP Verification -->
-                <div id="step4OTP" style="display: none;">
-                    <div class="progress-steps">
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot active"></div>
-                    </div>
-                    <div class="step-title">Enter Verification Code</div>
-                    <div class="step-subtitle">
-                        We sent a 6-digit code to<br>
-                        <span class="otp-email" id="otpEmailDisplay">your@email.com</span>
-                    </div>
-
-                    <div class="otp-container">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 1)" onkeydown="otpBack(event, this, 0)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 2)" onkeydown="otpBack(event, this, 1)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 3)" onkeydown="otpBack(event, this, 2)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 4)" onkeydown="otpBack(event, this, 3)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 5)" onkeydown="otpBack(event, this, 4)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, -1)" onkeydown="otpBack(event, this, 5)">
-                    </div>
-
-                    <p class="error-msg" id="otpError"></p>
-                    <p class="success-msg" id="otpSuccess"></p>
-                    <button class="btn" onclick="verifyOTP()">VERIFY & LOGIN</button>
-
-                    <div class="otp-code-box" id="otpCodeBox">
-                        <div class="otp-code-icon">&#x1F512;</div>
-                        <div class="otp-code-title">Your Verification Code</div>
-                        <div class="otp-code-value" id="otpCodeValue">------</div>
-                        <div class="otp-code-note">This code expires in 5 minutes</div>
-                    </div>
-
-                    <div class="resend-otp">
-                        <button id="resendBtn" onclick="resendOTP()" disabled>Resend code</button>
-                        <span class="resend-timer" id="resendTimer"></span>
-                    </div>
-
-                    <button class="btn-back" onclick="goToStep(3)">&#x2190; Change email</button>
+                    <p class="error-msg" id="credError"></p>
+                    <button class="btn" onclick="brokerLogin()">LOGIN</button>
+                    <button class="btn-back" onclick="goToStep(1)">&#x2190; Back to broker selection</button>
                 </div>
             </div>
         </div>
@@ -2663,11 +2717,56 @@
                 </div>
 
                 <div id="tradesTab" class="tab-content">
+                    <div id="manualTradePanel" class="manual-trade-panel">
+                        <button onclick="toggleManualTrade()" class="manual-trade-toggle">
+                            <span>&#x270B;</span> Add Manual Trade
+                            <span class="manual-trade-arrow">&#x25BC;</span>
+                        </button>
+                        <div id="manualTradeForm" class="manual-trade-form" style="display:none;">
+                            <div class="manual-trade-row">
+                                <div class="manual-trade-field">
+                                    <label>Symbol</label>
+                                    <input type="text" id="mtSymbol" placeholder="e.g. EURUSD" maxlength="20" autocomplete="off">
+                                </div>
+                                <div class="manual-trade-field">
+                                    <label>Lot Size</label>
+                                    <input type="number" id="mtLotSize" placeholder="0.01" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="manual-trade-row">
+                                <div class="manual-trade-field">
+                                    <label>Direction</label>
+                                    <div class="manual-trade-type-group">
+                                        <button id="mtTypeBuy" class="mt-type-btn active" onclick="setMTType('BUY')">BUY</button>
+                                        <button id="mtTypeSell" class="mt-type-btn" onclick="setMTType('SELL')">SELL</button>
+                                    </div>
+                                </div>
+                                <div class="manual-trade-field">
+                                    <label>Entry Price</label>
+                                    <input type="number" id="mtEntryPrice" placeholder="1.00000" step="0.00001" min="0">
+                                </div>
+                            </div>
+                            <div class="manual-trade-row">
+                                <div class="manual-trade-field">
+                                    <label>Stop Loss (optional)</label>
+                                    <input type="number" id="mtSl" placeholder="0.99000" step="0.00001" min="0">
+                                </div>
+                                <div class="manual-trade-field">
+                                    <label>Take Profit (optional)</label>
+                                    <input type="number" id="mtTp" placeholder="1.01000" step="0.00001" min="0">
+                                </div>
+                            </div>
+                            <div class="manual-trade-actions">
+                                <button onclick="submitManualTrade()" class="btn-manual-submit">&#x270B; Place Manual Trade</button>
+                                <span id="manualTradeMsg" class="manual-trade-msg"></span>
+                            </div>
+                        </div>
+                    </div>
                     <div id="tradesList">
                         <div id="tradesEmpty" class="empty-state">
                             <div class="empty-icon">&#x1F4C8;</div>
                             <div class="empty-text">No trades yet</div>
-                            <div class="empty-subtext">Trades will appear here when the EA executes</div>
+                            <div class="empty-subtext">Trades appear here when the EA executes or you add them manually</div>
                         </div>
                         <div id="tradesContainer" style="display:none;"></div>
                     </div>
@@ -2989,11 +3088,23 @@
         // ===== APP STATE =====
         const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:5000/api'
-            : null;
+            : 'https://big-dogs-fx-backend.onrender.com/api';
         const WS_URL = API_URL ? API_URL.replace('/api', '').replace('https', 'wss').replace('http', 'ws') : null;
         let token = localStorage.getItem('userToken');
         let session = JSON.parse(localStorage.getItem('bdSession') || 'null');
-        let resendTimerInterval = null;
+
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.exp * 1000 > Date.now()) {
+                    document.addEventListener('DOMContentLoaded', () => loadDashboard());
+                } else {
+                    localStorage.removeItem('userToken');
+                }
+            } catch {}
+        }
+
+
 
         // ===== EA STATE =====
         let eaActive = false;
@@ -3243,8 +3354,6 @@
         function goToStep(step) {
             document.getElementById('step1Broker').style.display = step === 1 ? 'block' : 'none';
             document.getElementById('step2Credentials').style.display = step === 2 ? 'block' : 'none';
-            document.getElementById('step3Email').style.display = step === 3 ? 'block' : 'none';
-            document.getElementById('step4OTP').style.display = step === 4 ? 'block' : 'none';
 
             if (step === 2 && selectedBroker) {
                 document.getElementById('selBrokerLogo').innerHTML = BROKER_LOGOS[selectedBroker.id];
@@ -3253,18 +3362,8 @@
                 document.getElementById('selBrokerLink').href = selectedBroker.url;
             }
 
-            if (step === 4) {
-                document.getElementById('otpEmailDisplay').textContent = document.getElementById('otpEmail').value;
-                startResendTimer();
-                if (pendingOtp) showOtpAutomatically();
-            }
-
             document.getElementById('brokerError').classList.remove('show');
             document.getElementById('credError').classList.remove('show');
-            document.getElementById('emailError').classList.remove('show');
-            document.getElementById('emailSuccess').classList.remove('show');
-            document.getElementById('otpError').classList.remove('show');
-            document.getElementById('otpSuccess').classList.remove('show');
         }
 
         function togglePassword(inputId, btn) {
@@ -3278,242 +3377,71 @@
             }
         }
 
-        // ===== OTP =====
-        let pendingEmail = '';
-        let pendingOtp = '';
-
-        async function sendOTP() {
-            const email = document.getElementById('otpEmail').value.trim();
-            const errorEl = document.getElementById('emailError');
-            const successEl = document.getElementById('emailSuccess');
-            const sendBtn = document.getElementById('sendOtpBtn');
+        // ===== BROKER LOGIN =====
+        async function brokerLogin() {
+            const account = document.getElementById('credAccount').value.trim();
+            const server = document.getElementById('credServer').value;
+            const password = document.getElementById('credPassword').value;
+            const email = document.getElementById('credEmail').value.trim();
+            const errorEl = document.getElementById('credError');
 
             errorEl.classList.remove('show');
-            successEl.classList.remove('show');
 
-            if (!email || !email.includes('@')) {
+            if (!account || !server || !password || !email) {
+                errorEl.textContent = 'Please fill in all fields';
+                errorEl.classList.add('show');
+                return;
+            }
+
+            if (!email.includes('@')) {
                 errorEl.textContent = 'Please enter a valid email address';
                 errorEl.classList.add('show');
                 return;
             }
 
-            sendBtn.disabled = true;
-            sendBtn.textContent = 'Sending...';
-            pendingEmail = email;
-
             try {
-                if (API_URL) {
-                    const response = await fetch(API_URL + '/auth/send-otp', {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify({ email })
-                    });
+                const response = await fetch(API_URL + '/auth/broker-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        brokerId: selectedBroker.id,
+                        brokerName: selectedBroker.name,
+                        account,
+                        server,
+                        password,
+                        email
+                    })
+                });
 
-                    const data = await response.json();
+                const data = await response.json();
 
-                    if (response.ok) {
-                        successEl.textContent = 'Verification code sent! Check your email.';
-                        successEl.classList.add('show');
-                        sendBtn.textContent = 'RESEND CODE';
-                        if (data.otp) pendingOtp = data.otp;
-                        goToStep(4);
-                        if (pendingOtp) showOtpAutomatically();
-                    } else {
-                        errorEl.textContent = data.message || 'Failed to send code. Please try again.';
-                        errorEl.classList.add('show');
-                        sendBtn.disabled = false;
-                        sendBtn.textContent = 'SEND VERIFICATION CODE';
-                    }
-                } else {
-                    successEl.textContent = 'Demo mode: Use code 123456 (check console for dev OTP if backend running)';
-                    successEl.classList.add('show');
-                    sendBtn.textContent = 'RESEND CODE';
-                    console.log('[DEMO MODE] OTP verification disabled. Use any 6-digit code to proceed, or 123456.');
-                    pendingOtp = '123456';
-                    goToStep(4);
-                    if (pendingOtp) showOtpAutomatically();
-                }
-            } catch (error) {
-                console.log('OTP send failed (offline mode):', error);
-                successEl.textContent = 'Offline mode: Use code 123456';
-                successEl.classList.add('show');
-                sendBtn.textContent = 'RESEND CODE';
-                pendingOtp = '123456';
-                goToStep(4);
-                if (pendingOtp) showOtpAutomatically();
-            }
-
-            startResendTimer();
-        }
-
-        function showOtpAutomatically() {
-            const box = document.getElementById('otpCodeBox');
-            const codeEl = document.getElementById('otpCodeValue');
-            if (!box || !codeEl) {
-                console.log('OTP box elements not found, retrying...');
-                setTimeout(showOtpAutomatically, 100);
-                return;
-            }
-            codeEl.textContent = pendingOtp;
-            box.classList.add('show');
-
-            // Auto-fill the OTP input fields
-            const inputs = document.querySelectorAll('.otp-input');
-            for (let i = 0; i < inputs.length; i++) {
-                inputs[i].value = pendingOtp[i] || '';
-            }
-            // Focus the verify button or last input
-            if (inputs[5]) inputs[5].focus();
-        }
-
-        function startResendTimer() {
-            let seconds = 60;
-            const btn = document.getElementById('resendBtn');
-            const timer = document.getElementById('resendTimer');
-            const sendBtn = document.getElementById('sendOtpBtn');
-            
-            if (btn) {
-                btn.disabled = true;
-            }
-            if (sendBtn) {
-                sendBtn.disabled = true;
-            }
-            if (timer) {
-                timer.textContent = `Resend in ${seconds}s`;
-            }
-
-            if (resendTimerInterval) clearInterval(resendTimerInterval);
-            resendTimerInterval = setInterval(() => {
-                seconds--;
-                if (timer) {
-                    timer.textContent = `Resend in ${seconds}s`;
-                }
-                if (seconds <= 0) {
-                    clearInterval(resendTimerInterval);
-                    if (btn) btn.disabled = false;
-                    if (sendBtn) sendBtn.disabled = false;
-                    if (timer) timer.textContent = '';
-                }
-            }, 1000);
-        }
-
-        async function resendOTP() {
-            const email = pendingEmail || document.getElementById('otpEmail').value.trim();
-            if (!email) return;
-
-            try {
-                if (API_URL) {
-                    const response = await fetch(API_URL + '/auth/send-otp', {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify({ email })
-                    });
-                    const data = await response.json();
-                    if (data.otp) pendingOtp = data.otp;
-                    if (pendingOtp) showOtpAutomatically();
-                }
-            } catch {}
-            
-            startResendTimer();
-        }
-
-        function otpMove(current, next) {
-            if (current.value.length === 1 && next >= 0) {
-                const inputs = document.querySelectorAll('.otp-input');
-                if (next < inputs.length) inputs[next].focus();
-            }
-        }
-
-        function otpBack(e, current, index) {
-            if (e.key === 'Backspace' && current.value === '' && index > 0) {
-                document.querySelectorAll('.otp-input')[index - 1].focus();
-            }
-        }
-
-        async function verifyOTP() {
-            const inputs = document.querySelectorAll('.otp-input');
-            let code = '';
-            inputs.forEach(i => code += i.value);
-
-            const errorEl = document.getElementById('otpError');
-            const successEl = document.getElementById('otpSuccess');
-
-            errorEl.classList.remove('show');
-            successEl.classList.remove('show');
-
-            if (code.length !== 6) {
-                errorEl.textContent = 'Please enter the full 6-digit code';
-                errorEl.classList.add('show');
-                return;
-            }
-
-            const email = pendingEmail || document.getElementById('otpEmail').value.trim();
-
-            successEl.textContent = 'Verifying...';
-            successEl.classList.add('show');
-
-            try {
-                if (API_URL) {
-                    const response = await fetch(API_URL + '/auth/verify-otp', {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify({ email, otp: code })
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        errorEl.textContent = data.message || 'Invalid code. Please try again.';
-                        errorEl.classList.add('show');
-                        successEl.classList.remove('show');
-                        inputs.forEach(i => i.value = '');
-                        if (inputs[0]) inputs[0].focus();
-                        return;
-                    }
-                } else {
-                    if (code !== '123456' && code.length !== 6) {
-                        errorEl.textContent = 'Invalid demo code. Use 123456.';
-                        errorEl.classList.add('show');
-                        successEl.classList.remove('show');
-                        return;
-                    }
-                }
-            } catch (error) {
-                console.log('OTP verification failed (offline):', error);
-                if (code !== '123456') {
-                    errorEl.textContent = 'Offline mode: Use code 123456';
+                if (!response.ok) {
+                    errorEl.textContent = data.message || 'Login failed. Please try again.';
                     errorEl.classList.add('show');
-                    successEl.classList.remove('show');
                     return;
                 }
+
+                localStorage.setItem('userToken', data.token);
+
+                session = {
+                    broker: selectedBroker,
+                    account: account,
+                    server: server,
+                    email: email,
+                    userId: data._id,
+                    username: data.username,
+                    loginTime: Date.now()
+                };
+                localStorage.setItem('bdSession', JSON.stringify(session));
+
+                loadDashboard();
+            } catch (error) {
+                errorEl.textContent = 'Connection error. Please try again.';
+                errorEl.classList.add('show');
             }
-
-            successEl.textContent = 'Verified! Logging in...';
-            errorEl.classList.remove('show');
-
-            const account = document.getElementById('credAccount').value;
-            const server = document.getElementById('credServer').value;
-
-            session = {
-                broker: selectedBroker,
-                account: account,
-                server: server,
-                email: email,
-                verified: true,
-                loginTime: Date.now()
-            };
-            localStorage.setItem('bdSession', JSON.stringify(session));
-
-            setTimeout(() => loadDashboard(), 1000);
         }
 
         // ===== DASHBOARD =====
@@ -3533,6 +3461,23 @@
                 document.getElementById('settingAccount').textContent = session.account || '--';
                 document.getElementById('settingServer').textContent = session.server || '--';
                 document.getElementById('settingEmail').textContent = session.email || '--';
+            }
+
+            const userToken = localStorage.getItem('userToken');
+            if (userToken && API_URL) {
+                fetch(API_URL + '/auth/profile', {
+                    headers: { Authorization: `Bearer ${userToken}` }
+                }).then(r => r.json()).then(data => {
+                    if (data.email) {
+                        document.getElementById('settingEmail').textContent = data.email;
+                        if (session) session.email = data.email;
+                    }
+                    if (data.riskSettings) {
+                        document.getElementById('settingRisk').textContent = data.riskSettings.riskPercent + '%';
+                        document.getElementById('settingMaxTrades').textContent = data.riskSettings.maxTrades;
+                        document.getElementById('settingMaxSpread').textContent = data.riskSettings.maxSpread;
+                    }
+                }).catch(() => {});
             }
 
             Promise.all([loadTradingMode(), loadAgentVoting()]).then(() => updateGodMode());
@@ -3932,6 +3877,70 @@
             }).join('');
         }
 
+        // ===== MANUAL TRADE ENTRY =====
+        let mtType = 'BUY';
+
+        function toggleManualTrade() {
+            const form = document.getElementById('manualTradeForm');
+            const arrow = document.querySelector('.manual-trade-arrow');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                arrow.textContent = '\u25B2';
+            } else {
+                form.style.display = 'none';
+                arrow.textContent = '\u25BC';
+            }
+        }
+
+        function setMTType(type) {
+            mtType = type;
+            document.getElementById('mtTypeBuy').className = 'mt-type-btn' + (type === 'BUY' ? ' active' : '');
+            document.getElementById('mtTypeSell').className = 'mt-type-btn' + (type === 'SELL' ? ' active' : '');
+        }
+
+        async function submitManualTrade() {
+            const symbol = document.getElementById('mtSymbol').value.trim().toUpperCase();
+            const lotSize = parseFloat(document.getElementById('mtLotSize').value);
+            const entryPrice = parseFloat(document.getElementById('mtEntryPrice').value);
+            const sl = document.getElementById('mtSl').value ? parseFloat(document.getElementById('mtSl').value) : null;
+            const tp = document.getElementById('mtTp').value ? parseFloat(document.getElementById('mtTp').value) : null;
+
+            const msgEl = document.getElementById('manualTradeMsg');
+
+            if (!symbol) { msgEl.textContent = 'Enter a symbol'; msgEl.className = 'manual-trade-msg error'; return; }
+            if (!lotSize || lotSize <= 0) { msgEl.textContent = 'Enter lot size'; msgEl.className = 'manual-trade-msg error'; return; }
+            if (!entryPrice || entryPrice <= 0) { msgEl.textContent = 'Enter entry price'; msgEl.className = 'manual-trade-msg error'; return; }
+
+            msgEl.textContent = 'Placing trade...';
+            msgEl.className = 'manual-trade-msg';
+
+            try {
+                const res = await fetch(API_URL + '/trades/manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + userToken },
+                    body: JSON.stringify({ symbol, type: mtType, lotSize, entryPrice, sl, tp })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msgEl.textContent = '\u2705 Trade placed!';
+                    msgEl.className = 'manual-trade-msg success';
+                    document.getElementById('mtSymbol').value = '';
+                    document.getElementById('mtLotSize').value = '';
+                    document.getElementById('mtEntryPrice').value = '';
+                    document.getElementById('mtSl').value = '';
+                    document.getElementById('mtTp').value = '';
+                    loadJournal();
+                    setTimeout(() => { document.getElementById('manualTradeForm').style.display = 'none'; document.querySelector('.manual-trade-arrow').textContent = '\u25BC'; }, 1500);
+                } else {
+                    msgEl.textContent = data.message || 'Failed to place trade';
+                    msgEl.className = 'manual-trade-msg error';
+                }
+            } catch (e) {
+                msgEl.textContent = 'Connection error';
+                msgEl.className = 'manual-trade-msg error';
+            }
+        }
+
         // ===== JOURNAL =====
         let allTrades = [];
         let allMonthTrades = [];
@@ -3995,9 +4004,10 @@
             container.style.display = 'block';
 
             container.innerHTML = allTrades.slice(0, 50).map(trade => {
-                const date = new Date(trade.entryTime);
-                const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-                const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const et = toET(trade.entryTime);
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const dateStr = `${String(et.day).padStart(2,'0')} ${months[et.month]}`;
+                const timeStr = `${String(et.hour).padStart(2,'0')}:${String(et.minute).padStart(2,'0')}`;
                 const isWin = trade.pips > 0;
                 const isClosed = !!trade.exitTime;
 
@@ -4006,6 +4016,7 @@
                         <div class="trade-header">
                             <span class="trade-symbol">${trade.symbol}</span>
                             <span class="badge ${trade.type.toLowerCase() === 'buy' ? 'badge-buy' : 'badge-sell'}">${trade.type}</span>
+                            <span class="source-badge ${trade.source === 'manual' ? 'source-manual' : 'source-ea'}">${trade.source === 'manual' ? '\u270B Manual' : '\uD83E\uDD16 EA'}</span>
                         </div>
                         <div class="trade-journal-prices" style="margin-bottom:0">
                             <div class="price-item">
@@ -4071,7 +4082,7 @@
                     <div class="empty-state">
                         <div class="empty-icon">&#x1F4DC;</div>
                         <div class="empty-text">No trades in journal</div>
-                        <div class="empty-subtext">Trades will appear here after the EA executes</div>
+                        <div class="empty-subtext">Trades appear here when the EA executes or you add them manually</div>
                     </div>
                 `;
                 return;
@@ -4082,9 +4093,10 @@
             const avgPips = allTrades.length > 0 ? Math.round(allTrades.reduce((sum, t) => sum + t.pips, 0) / allTrades.length) : 0;
 
             container.innerHTML = filtered.map(trade => {
-                const date = new Date(trade.entryTime);
-                const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-                const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const et = toET(trade.entryTime);
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const dateStr = `${String(et.day).padStart(2,'0')} ${months[et.month]}`;
+                const timeStr = `${String(et.hour).padStart(2,'0')}:${String(et.minute).padStart(2,'0')}`;
                 const isWin = trade.pips > 0;
 
                 return `
@@ -4093,6 +4105,7 @@
                             <div class="trade-journal-time">
                                 <span>&#x1F4C5;</span> ${dateStr} <span>&#x1F551;</span> ${timeStr}
                                 ${trade.session && trade.session !== '--' ? `<span class="day-detail-trade-session" style="margin-left:6px;display:inline-block">${trade.session}</span>` : ''}
+                                ${trade.source ? `<span class="source-badge ${trade.source === 'manual' ? 'source-manual' : 'source-ea'}">${trade.source === 'manual' ? '\u270B Manual' : '\uD83E\uDD16 EA'}</span>` : ''}
                             </div>
                             <div class="trade-journal-symbol">${trade.symbol}</div>
                             <div class="trade-journal-type ${trade.type.toLowerCase()}">${trade.type}</div>
@@ -4182,7 +4195,9 @@
                 year: et.getUTCFullYear(),
                 month: et.getUTCMonth(),
                 day: et.getUTCDate(),
-                dayOfWeek: et.getUTCDay()
+                dayOfWeek: et.getUTCDay(),
+                hour: et.getUTCHours(),
+                minute: et.getUTCMinutes()
             };
         }
         const etNow = getETDate();
@@ -4318,8 +4333,8 @@
 
             const tradesContainer = document.getElementById('dayDetailTrades');
             tradesContainer.innerHTML = dayTrades.map(t => {
-                const entryTime = new Date(t.entryTime);
-                const timeStr = entryTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const et = toET(t.entryTime);
+                const timeStr = `${String(et.hour).padStart(2,'0')}:${String(et.minute).padStart(2,'0')}`;
                 const isWin = (t.pips || 0) > 0;
 
                 // Build decision info
@@ -4339,6 +4354,7 @@
                     <div class="day-detail-trade-header">
                         <span class="day-detail-trade-symbol">${t.symbol}</span>
                         <span class="day-detail-trade-type ${t.type.toLowerCase()}">${t.type}</span>
+                        ${t.source ? `<span class="source-badge ${t.source === 'manual' ? 'source-manual' : 'source-ea'}" style="margin-left:auto">${t.source === 'manual' ? '\u270B' : '\uD83E\uDD16'}</span>` : ''}
                     </div>
                     ${t.session && t.session !== '--' ? `<span class="day-detail-trade-session">&#x1F30D; ${t.session} Session</span>` : ''}
                     <div class="day-detail-trade-info">
@@ -4683,8 +4699,7 @@
                     document.getElementById('credAccount').value = '';
                     document.getElementById('credPassword').value = '';
                     document.getElementById('credServer').value = '';
-                    document.getElementById('otpEmail').value = '';
-                    document.querySelectorAll('.otp-input').forEach(i => i.value = '');
+                    document.getElementById('credEmail').value = '';
                     document.querySelectorAll('.broker-item').forEach(i => i.classList.remove('selected'));
                     document.getElementById('brokerNextBtn').disabled = true;
                     selectedBroker = null;
@@ -4731,10 +4746,7 @@
         }
 
         document.getElementById('credPassword').addEventListener('keypress', e => {
-            if (e.key === 'Enter') goToStep(3);
-        });
-        document.getElementById('otpEmail').addEventListener('keypress', e => {
-            if (e.key === 'Enter') sendOTP();
+            if (e.key === 'Enter') brokerLogin();
         });
     </script>
 

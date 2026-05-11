@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
-const otpService = require('../services/otpService');
 const authMiddleware = require('../middleware/auth');
 
 const generateToken = (id) => {
@@ -81,6 +81,70 @@ router.post('/login', [
   }
 });
 
+router.post('/broker-login', [
+  body('account').trim().notEmpty(),
+  body('server').trim().notEmpty(),
+  body('password').trim().notEmpty(),
+  body('email').isEmail().normalizeEmail()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Please fill in all fields correctly' });
+    }
+
+    const { brokerId, brokerName, account, server, password, email } = req.body;
+
+    let user = await User.findOne({
+      $or: [{ 'mt5Account.login': account }, { email }]
+    });
+
+    if (user) {
+      user.mt5Account.login = account;
+      user.mt5Account.server = server;
+      if (password) user.mt5Account.password = password;
+      user.lastLoginAt = new Date();
+      await user.save();
+    } else {
+      const randomSuffix = crypto.randomBytes(3).toString('hex');
+      const generatedPassword = crypto.randomBytes(12).toString('hex');
+
+      user = new User({
+        username: `trader_${randomSuffix}`,
+        email,
+        password: generatedPassword,
+        mt5Account: {
+          login: account,
+          server,
+          password
+        },
+        lastLoginAt: new Date()
+      });
+      user.generateEAAPIKey();
+      await user.save();
+    }
+
+    const userData = await User.findById(user._id)
+      .select('-password -eaApiKeyHash');
+
+    res.json({
+      _id: userData._id,
+      username: userData.username,
+      email: userData.email,
+      riskSettings: userData.riskSettings,
+      mt5Account: userData.mt5Account,
+      tradingMode: userData.tradingMode,
+      multiAgentVoting: userData.multiAgentVoting,
+      eaActive: userData.eaActive,
+      token: generateToken(userData._id),
+      refreshToken: generateRefreshToken(userData._id)
+    });
+  } catch (error) {
+    console.error('Broker login error:', error);
+    res.status(500).json({ message: 'Login failed. Please try again.' });
+  }
+});
+
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
@@ -148,55 +212,6 @@ router.put('/settings', authMiddleware, [
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: 'Failed to update settings' });
-  }
-});
-
-router.post('/send-otp', [
-  body('email').isEmail().normalizeEmail()
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ message: 'Please enter a valid email address' });
-    }
-
-    const { email } = req.body;
-    const result = await otpService.sendOTP(email);
-
-    if (result.success) {
-      const response = { message: 'Verification code sent to your email' };
-      if (process.env.NODE_ENV !== 'production') {
-        response.otp = result.otp;
-      }
-      res.json(response);
-    } else {
-      res.status(429).json({ message: result.error || 'Failed to send verification code' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Server error. Please try again.' });
-  }
-});
-
-router.post('/verify-otp', [
-  body('email').isEmail(),
-  body('otp').isLength({ min: 6, max: 6 })
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { email, otp } = req.body;
-    const result = otpService.verifyOTP(email, otp);
-
-    if (result.valid) {
-      res.json({ message: 'OTP verified' });
-    } else {
-      res.status(400).json({ message: result.message });
-    }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
   }
 });
 

@@ -9,6 +9,8 @@ const tradeSchema = new mongoose.Schema({
   entryPrice: { type: Number, required: true },
   exitPrice: { type: Number },
   
+  source: { type: String, enum: ['manual', 'ea'], default: 'ea' },
+  
   // Pips and Money
   pips: { type: Number, default: 0 },
   moneyMade: { type: Number, default: 0 },

@@ -126,7 +126,8 @@ router.get('/journal', authMiddleware, async (req, res) => {
       patternMatched: t.patternMatched,
       confidenceScore: t.confidenceScore,
       zoneType: t.zoneType,
-      pattern: t.pattern
+      pattern: t.pattern,
+      source: t.source || 'ea'
     }));
 
     res.json({
@@ -231,12 +232,14 @@ router.post('/report', eaAuthMiddleware, [
 
     let trade;
     if (existingTrade) {
+      delete tradeData.source; // preserve original source (e.g. 'manual')
       trade = await Trade.findOneAndUpdate(
         { ticket: tradeData.ticket, userId },
         { $set: tradeData },
         { new: true, runValidators: true }
       );
     } else {
+      tradeData.source = 'ea';
       tradeData.userId = userId;
       trade = await Trade.create(tradeData);
     }
@@ -251,6 +254,39 @@ router.post('/report', eaAuthMiddleware, [
   } catch (error) {
     console.error('Trade report error:', error);
     res.status(500).json({ message: 'Failed to process trade report' });
+  }
+});
+
+// Manual trade entry (via web app)
+router.post('/manual', authMiddleware, [
+  body('symbol').trim().isLength({ min: 1, max: 20 }),
+  body('type').isIn(['BUY', 'SELL', 'buy', 'sell']),
+  body('lotSize').optional().isFloat({ min: 0 }),
+  body('entryPrice').optional().isFloat({ min: 0 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Invalid trade data', errors: errors.array() });
+    }
+
+    const tradeData = sanitizeTradeInput(req.body);
+    tradeData.ticket = -(Date.now() % 1000000);
+    tradeData.source = 'manual';
+    tradeData.status = 'open';
+    tradeData.userId = req.userId;
+
+    const trade = await Trade.create(tradeData);
+
+    const io = req.io;
+    if (io && req.userId) {
+      io.to(req.userId.toString()).emit('trade_update', trade);
+    }
+
+    res.status(201).json({ success: true, trade: { _id: trade._id, ticket: trade.ticket, symbol: trade.symbol } });
+  } catch (error) {
+    console.error('Manual trade error:', error);
+    res.status(500).json({ message: 'Failed to create manual trade' });
   }
 });
 

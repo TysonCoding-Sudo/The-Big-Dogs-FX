@@ -702,7 +702,7 @@ void CheckForEntries() {
       
       if(slDistance < 10) return;
       
-      double lotSize = CalculateLotSize(slDistance * (SymbolInfoDouble(_Symbol, SYMBOL_DIGITS) == 3 || SymbolInfoDouble(_Symbol, SYMBOL_DIGITS) == 5) ? 10 : 1);
+      double lotSize = CalculateLotSize(slDistance * ((SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 3 || SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5) ? 10.0 : 1.0));
       
       double structureTP = 0;
       if(UseStructureTP) {
@@ -1371,7 +1371,7 @@ AgentResult Agent3_FVGIFVGFib(ENUM_TIMEFRAMES tf) {
 //+------------------------------------------------------------------+
 //| Agent 4: Momentum Breaker - consecutive impulsive candles        |
 //+------------------------------------------------------------------+
-AgentResult Agent4_Momentum(ENUM_TIMEFRAMES tf) {
+AgentResult Agent4_MomentumFn(ENUM_TIMEFRAMES tf) {
    AgentResult res;
    res.vote = VOTE_NEUTRAL;
    res.entry = 0; res.sl = 0; res.tp = 0; res.reason = "";
@@ -1409,7 +1409,7 @@ AgentResult Agent4_Momentum(ENUM_TIMEFRAMES tf) {
 //+------------------------------------------------------------------+
 //| Agent 5: HTF Trend Follower - 200 EMA slope                      |
 //+------------------------------------------------------------------+
-AgentResult Agent5_Trend(ENUM_TIMEFRAMES tf) {
+AgentResult Agent5_TrendFn(ENUM_TIMEFRAMES tf) {
    AgentResult res;
    res.vote = VOTE_NEUTRAL;
    res.entry = 0; res.sl = 0; res.tp = 0; res.reason = "";
@@ -1455,8 +1455,8 @@ ConsensusResult GetConsensus() {
    agents[0] = Agent1_SnDZone(tf);
    agents[1] = Agent2_LiquiditySweep(tf);
    agents[2] = Agent3_FVGIFVGFib(tf);
-   agents[3] = Agent4_Momentum(tf);
-   agents[4] = Agent5_Trend(tf);
+   agents[3] = Agent4_MomentumFn(tf);
+   agents[4] = Agent5_TrendFn(tf);
 
    int buyVotes = 0, sellVotes = 0;
    double buyEntry = 0, sellEntry = 0, buySL = 0, sellSL = 0, buyTP = 0, sellTP = 0;
@@ -1620,7 +1620,8 @@ string WebRequestSend(const string endpoint, const string jsonStr) {
    StringToCharArray(jsonStr, data);
 
    ResetLastError();
-   int res = WebRequest(method, url, headers, 5000, data, resultData);
+   string resultHeaders;
+   int res = WebRequest(method, url, headers, 5000, data, resultData, resultHeaders);
 
    if(res == -1) {
       int err = GetLastError();
@@ -1791,7 +1792,7 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       }
    }
 
-   if(trans.type == TRADE_TRANSACTION_MODIFY) {
+   if(trans.type == TRADE_TRANSACTION_POSITION) {
       ulong positionTicket = trans.position;
       if(positionTicket > 0 && PositionSelectByTicket(positionTicket)) {
          if(PositionGetString(POSITION_SYMBOL) == _Symbol &&

@@ -38,7 +38,7 @@ const server = http.createServer(app);
 
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['https://tysoncoding-sudo.github.io', 'http://localhost:3000', 'http://localhost:5000'];
+  : ['https://tysoncoding-sudo.github.io', 'https://big-dogs-fx-backend.onrender.com', 'http://localhost:3000', 'http://localhost:5000'];
 
 const corsConfig = {
   origin: (origin, callback) => {
@@ -155,8 +155,7 @@ const strictAuthLimiter = rateLimit({
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/send-otp', authLimiter);
-app.use('/api/auth/verify-otp', authLimiter);
+app.use('/api/auth/broker-login', authLimiter);
 app.use('/api/auth/*', strictAuthLimiter);
 
 const apiLimiter = rateLimit({

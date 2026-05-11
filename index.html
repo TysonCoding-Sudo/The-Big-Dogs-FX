@@ -1516,8 +1516,6 @@
                     <div class="progress-steps">
                         <div class="step-dot active"></div>
                         <div class="step-dot"></div>
-                        <div class="step-dot"></div>
-                        <div class="step-dot"></div>
                     </div>
                     <div class="step-title">Select Your Broker</div>
                     <div class="step-subtitle">Search and choose your trading broker</div>
@@ -1610,8 +1608,6 @@
                     <div class="progress-steps">
                         <div class="step-dot completed"></div>
                         <div class="step-dot active"></div>
-                        <div class="step-dot"></div>
-                        <div class="step-dot"></div>
                     </div>
 
                     <div id="selectedBrokerDisplay" class="selected-broker">
@@ -1648,83 +1644,14 @@
                             <option value="Real">Real Account</option>
                         </select>
                     </div>
-
-                    <p class="error-msg" id="credError"></p>
-                    <button class="btn" onclick="goToStep(3)">NEXT</button>
-                    <button class="btn-back" onclick="goToStep(1)">&#x2190; Back to broker selection</button>
-                </div>
-
-                <!-- STEP 3: Email for OTP -->
-                <div id="step3Email" style="display: none;">
-                    <div class="progress-steps">
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot active"></div>
-                        <div class="step-dot"></div>
-                    </div>
-                    <div class="step-title">Verify It's You</div>
-                    <div class="step-subtitle">Enter your email to receive a verification code</div>
-
                     <div class="form-group">
                         <label>Email Address</label>
-                        <input type="email" id="otpEmail" placeholder="your@email.com" inputmode="email">
+                        <input type="email" id="credEmail" placeholder="your@email.com" inputmode="email">
                     </div>
 
-                    <p class="error-msg" id="emailError"></p>
-                    <p class="success-msg" id="emailSuccess"></p>
-                    <button class="btn" id="sendOtpBtn" onclick="sendOTP()">SEND VERIFICATION CODE</button>
-
-                    <div id="otpDisplayCard" class="otp-display-card" style="display:none;">
-                        <div class="otp-display-icon">&#x1F512;</div>
-                        <div class="otp-display-title">Verification Code</div>
-                        <div class="otp-display-code" id="otpDisplayCode">------</div>
-                        <div class="otp-display-note">Enter this code on the next screen</div>
-                        <button class="btn" onclick="goToOtpStep()">I HAVE THE CODE &#x2192;</button>
-                    </div>
-
-                    <button class="btn-back" onclick="goToStep(2)">&#x2190; Back to credentials</button>
-                </div>
-
-                <!-- STEP 4: OTP Verification -->
-                <div id="step4OTP" style="display: none;">
-                    <div class="progress-steps">
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot completed"></div>
-                        <div class="step-dot active"></div>
-                    </div>
-                    <div class="step-title">Enter Verification Code</div>
-                    <div class="step-subtitle">
-                        We sent a 6-digit code to<br>
-                        <span class="otp-email" id="otpEmailDisplay">your@email.com</span>
-                    </div>
-
-                    <div class="otp-container">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 1)" onkeydown="otpBack(event, this, 0)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 2)" onkeydown="otpBack(event, this, 1)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 3)" onkeydown="otpBack(event, this, 2)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 4)" onkeydown="otpBack(event, this, 3)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, 5)" onkeydown="otpBack(event, this, 4)">
-                        <input type="text" class="otp-input" maxlength="1" inputmode="numeric" oninput="otpMove(this, -1)" onkeydown="otpBack(event, this, 5)">
-                    </div>
-
-                    <p class="error-msg" id="otpError"></p>
-                    <p class="success-msg" id="otpSuccess"></p>
-                    <button class="btn" onclick="verifyOTP()">VERIFY & LOGIN</button>
-
-                    <div class="otp-show-code">
-                        <button class="otp-show-btn" id="otpShowBtn" onclick="toggleOtpCode()">&#x1F441; Show code</button>
-                        <div class="otp-code-reveal" id="otpCodeReveal" style="display:none;">
-                            Your code: <strong id="otpRevealCode">------</strong>
-                        </div>
-                    </div>
-
-                    <div class="resend-otp">
-                        <button id="resendBtn" onclick="resendOTP()" disabled>Resend code</button>
-                        <span class="resend-timer" id="resendTimer"></span>
-                    </div>
-
-                    <button class="btn-back" onclick="goToStep(3)">&#x2190; Change email</button>
+                    <p class="error-msg" id="credError"></p>
+                    <button class="btn" onclick="brokerLogin()">LOGIN</button>
+                    <button class="btn-back" onclick="goToStep(1)">&#x2190; Back to broker selection</button>
                 </div>
             </div>
         </div>
@@ -2131,12 +2058,21 @@
         // ===== APP STATE =====
         const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:5000/api'
-            : null;
+            : 'https://big-dogs-fx-backend.onrender.com/api';
         const WS_URL = API_URL ? API_URL.replace('/api', '').replace('https', 'wss').replace('http', 'ws') : null;
         let token = localStorage.getItem('userToken');
         let session = JSON.parse(localStorage.getItem('bdSession') || 'null');
-        let generatedOTP = '';
-        let resendTimerInterval = null;
+
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.exp * 1000 > Date.now()) {
+                    document.addEventListener('DOMContentLoaded', () => loadDashboard());
+                } else {
+                    localStorage.removeItem('userToken');
+                }
+            } catch {}
+        }
 
         // ===== BROKER SELECTION =====
         const BROKER_URLS = {
@@ -2177,8 +2113,6 @@
         function goToStep(step) {
             document.getElementById('step1Broker').style.display = step === 1 ? 'block' : 'none';
             document.getElementById('step2Credentials').style.display = step === 2 ? 'block' : 'none';
-            document.getElementById('step3Email').style.display = step === 3 ? 'block' : 'none';
-            document.getElementById('step4OTP').style.display = step === 4 ? 'block' : 'none';
 
             if (step === 2 && selectedBroker) {
                 document.getElementById('selBrokerLogo').innerHTML = BROKER_LOGOS[selectedBroker.id];
@@ -2187,17 +2121,8 @@
                 document.getElementById('selBrokerLink').href = selectedBroker.url;
             }
 
-            if (step === 4) {
-                document.getElementById('otpEmailDisplay').textContent = document.getElementById('otpEmail').value;
-                startResendTimer();
-            }
-
             document.getElementById('brokerError').classList.remove('show');
             document.getElementById('credError').classList.remove('show');
-            document.getElementById('emailError').classList.remove('show');
-            document.getElementById('emailSuccess').classList.remove('show');
-            document.getElementById('otpError').classList.remove('show');
-            document.getElementById('otpSuccess').classList.remove('show');
         }
 
         function togglePassword(inputId, btn) {
@@ -2211,135 +2136,71 @@
             }
         }
 
-        // ===== OTP =====
-        function generateOTP() {
-            return Math.floor(100000 + Math.random() * 900000).toString();
-        }
+        // ===== BROKER LOGIN =====
+        async function brokerLogin() {
+            const account = document.getElementById('credAccount').value.trim();
+            const server = document.getElementById('credServer').value;
+            const password = document.getElementById('credPassword').value;
+            const email = document.getElementById('credEmail').value.trim();
+            const errorEl = document.getElementById('credError');
 
-        async function sendOTP() {
-            const email = document.getElementById('otpEmail').value.trim();
-            const errorEl = document.getElementById('emailError');
-            const successEl = document.getElementById('emailSuccess');
+            errorEl.classList.remove('show');
 
-            if (!email || !email.includes('@')) {
+            if (!account || !server || !password || !email) {
+                errorEl.textContent = 'Please fill in all fields';
+                errorEl.classList.add('show');
+                return;
+            }
+
+            if (!email.includes('@')) {
                 errorEl.textContent = 'Please enter a valid email address';
                 errorEl.classList.add('show');
                 return;
             }
 
-            generatedOTP = generateOTP();
-
-            document.getElementById('sendOtpBtn').style.display = 'none';
-            document.getElementById('otpDisplayCode').textContent = generatedOTP;
-            document.getElementById('otpDisplayCard').style.display = 'block';
-            document.getElementById('otpRevealCode').textContent = generatedOTP;
-
-            // Try backend in background — code is already visible
             try {
-                await fetch(API_URL + '/auth/send-otp', {
+                const response = await fetch(API_URL + '/auth/broker-login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, otp: generatedOTP })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        brokerId: selectedBroker.id,
+                        brokerName: selectedBroker.name,
+                        account,
+                        server,
+                        password,
+                        email
+                    })
                 });
-            } catch {}
-        }
 
-        function goToOtpStep() {
-            goToStep(4);
-            startResendTimer();
-        }
+                const data = await response.json();
 
-        function toggleOtpCode() {
-            const reveal = document.getElementById('otpCodeReveal');
-            const btn = document.getElementById('otpShowBtn');
-            const isHidden = reveal.style.display === 'none';
-            reveal.style.display = isHidden ? 'block' : 'none';
-            btn.innerHTML = isHidden ? '&#x1F441; Hide code' : '&#x1F441; Show code';
-        }
-
-        function startResendTimer() {
-            let seconds = 60;
-            const btn = document.getElementById('resendBtn');
-            const timer = document.getElementById('resendTimer');
-            btn.disabled = true;
-            timer.textContent = `Resend in ${seconds}s`;
-
-            if (resendTimerInterval) clearInterval(resendTimerInterval);
-            resendTimerInterval = setInterval(() => {
-                seconds--;
-                timer.textContent = `Resend in ${seconds}s`;
-                if (seconds <= 0) {
-                    clearInterval(resendTimerInterval);
-                    btn.disabled = false;
-                    timer.textContent = '';
+                if (!response.ok) {
+                    errorEl.textContent = data.message || 'Login failed. Please try again.';
+                    errorEl.classList.add('show');
+                    return;
                 }
-            }, 1000);
-        }
 
-        async function resendOTP() {
-            generatedOTP = generateOTP();
-            try {
-                await fetch(API_URL + '/auth/send-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: document.getElementById('otpEmail').value, otp: generatedOTP })
-                });
-            } catch {
-                // Update displayed code on both cards
-                document.getElementById('otpDisplayCode').textContent = generatedOTP;
-                document.getElementById('otpRevealCode').textContent = generatedOTP;
+                localStorage.setItem('userToken', data.token);
+
+                session = {
+                    broker: selectedBroker,
+                    account: account,
+                    server: server,
+                    email: email,
+                    userId: data._id,
+                    username: data.username,
+                    loginTime: Date.now()
+                };
+                localStorage.setItem('bdSession', JSON.stringify(session));
+
+                loadDashboard();
+            } catch (error) {
+                errorEl.textContent = 'Connection error. Please try again.';
+                errorEl.classList.add('show');
             }
-            startResendTimer();
-        }
-
-        function otpMove(current, next) {
-            if (current.value.length === 1 && next >= 0) {
-                const inputs = document.querySelectorAll('.otp-input');
-                if (next < inputs.length) inputs[next].focus();
-            }
-        }
-
-        function otpBack(e, current, index) {
-            if (e.key === 'Backspace' && current.value === '' && index > 0) {
-                document.querySelectorAll('.otp-input')[index - 1].focus();
-            }
-        }
-
-        function verifyOTP() {
-            const inputs = document.querySelectorAll('.otp-input');
-            let code = '';
-            inputs.forEach(i => code += i.value);
-
-            if (code.length !== 6) {
-                document.getElementById('otpError').textContent = 'Please enter the full 6-digit code';
-                document.getElementById('otpError').classList.add('show');
-                return;
-            }
-
-            if (code !== generatedOTP) {
-                document.getElementById('otpError').textContent = 'Invalid code. Please try again.';
-                document.getElementById('otpError').classList.add('show');
-                return;
-            }
-
-            document.getElementById('otpSuccess').textContent = 'Verified! Logging in...';
-            document.getElementById('otpSuccess').classList.add('show');
-            document.getElementById('otpError').classList.remove('show');
-
-            const account = document.getElementById('credAccount').value;
-            const server = document.getElementById('credServer').value;
-
-            session = {
-                broker: selectedBroker,
-                account: account,
-                server: server,
-                email: document.getElementById('otpEmail').value,
-                verified: true,
-                loginTime: Date.now()
-            };
-            localStorage.setItem('bdSession', JSON.stringify(session));
-
-            setTimeout(() => loadDashboard(), 1000);
         }
 
         // ===== DASHBOARD =====
@@ -2358,7 +2219,24 @@
                 document.getElementById('settingBroker').textContent = session.broker.name;
                 document.getElementById('settingAccount').textContent = session.account || '--';
                 document.getElementById('settingServer').textContent = session.server || '--';
-                document.getElementById('settingEmail').textContent = session.email || '--';
+                document.getElementById('settingEmail').content = session.email || '--';
+            }
+
+            const userToken = localStorage.getItem('userToken');
+            if (userToken && API_URL) {
+                fetch(API_URL + '/auth/profile', {
+                    headers: { Authorization: `Bearer ${userToken}` }
+                }).then(r => r.json()).then(data => {
+                    if (data.email) {
+                        document.getElementById('settingEmail').textContent = data.email;
+                        if (session) session.email = data.email;
+                    }
+                    if (data.riskSettings) {
+                        document.getElementById('settingRisk').textContent = data.riskSettings.riskPercent + '%';
+                        document.getElementById('settingMaxTrades').textContent = data.riskSettings.maxTrades;
+                        document.getElementById('settingMaxSpread').textContent = data.riskSettings.maxSpread;
+                    }
+                }).catch(() => {});
             }
 
             loadTradingMode();
@@ -2948,8 +2826,7 @@
                     document.getElementById('credAccount').value = '';
                     document.getElementById('credPassword').value = '';
                     document.getElementById('credServer').value = '';
-                    document.getElementById('otpEmail').value = '';
-                    document.querySelectorAll('.otp-input').forEach(i => i.value = '');
+                    document.getElementById('credEmail').value = '';
                     document.querySelectorAll('.broker-item').forEach(i => i.classList.remove('selected'));
                     document.getElementById('brokerNextBtn').disabled = true;
                     selectedBroker = null;
@@ -2994,10 +2871,7 @@
         }
 
         document.getElementById('credPassword').addEventListener('keypress', e => {
-            if (e.key === 'Enter') goToStep(3);
-        });
-        document.getElementById('otpEmail').addEventListener('keypress', e => {
-            if (e.key === 'Enter') sendOTP();
+            if (e.key === 'Enter') brokerLogin();
         });
     </script>
 
