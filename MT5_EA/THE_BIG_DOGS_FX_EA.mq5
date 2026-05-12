@@ -4,7 +4,7 @@
 //|                                           We chase the cash      |
 //+------------------------------------------------------------------+
 #property copyright "THE BIG DOGS FX - We chase the cash"
-#property version   "1.00"
+#property version   "2.00"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -50,16 +50,10 @@ input double MaxLotSize         = 10.0;     // Maximum lot size
 input group "=== TP/SL STRUCTURE ==="
 input int    ExtraSLPips        = 10;       // Extra buffer beyond zone (pips)
 input bool   UseStructureTP     = true;     // TP at next structure level
-input int    MinRRRatio         = 2;        // Minimum Risk:Reward ratio
-
-input group "=== NORMAL MODE SWING TRADES ==="
-input double   NormalWeeklyTarget     = 7000;    // Weekly profit target for normal mode (ZAR)
-input double   NormalBEThreshold      = 3500;    // Close swing trades at this profit on Friday
-input int      NormalSwingMagic       = 20250418; // Magic number for swing trades
-input int      NormalMaxSwingTrades   = 2;       // Max simultaneous swing trades
+input int    MinRRRatio         = 2;        // Minimum Risk:Reward ratio (normal)
 
 input group "=== AGGRESSIVE MODE ==="
-input bool   AggressiveModeEnabled = false; // Enable aggressive mode (M1/M5)
+input bool   AggressiveModeEnabled = true;  // Enable aggressive mode (M1/M5)
 input ENUM_TIMEFRAMES AggressiveTimeframe = PERIOD_M5; // TF for aggressive
 input double AggressiveRiskPercent  = 1.0;  // Risk % for aggressive trades
 input int    AggressiveMinSwingBars = 10;   // Min swing lookback (bars)
@@ -67,36 +61,27 @@ input int    AggressiveImpulsePips  = 15;   // Min impulse for CHoSD (pips)
 input int    AggressiveMaxTrades    = 2;    // Max trades in aggressive mode
 input double AggressiveMinRR        = 2.5;  // Min RR for aggressive trades
 
-input group "=== TRADE REPORTING ==="
-input string   BackendURL           = "http://localhost:5000"; // Backend server URL
-input string   EAApiKey             = "ChangeMeToARandomSecureString"; // EA API key for reporting
-input bool     EnableTradeReporting = true;   // Report trades to backend
-
 input group "=== SYMBOL FILTER ==="
 input string AllowedSymbols         = "NAS100,US30,XAUUSD"; // Comma-separated allowed symbols
 
 input group "=== MULTI-AGENT VOTING ==="
-input bool   UseMultiAgentVoting   = false;    // Enable multi-agent consensus
-input int    MinAgreeCount         = 3;         // Min agents agreeing (1-5)
-input bool   Agent1_SnD            = true;      // Agent 1: S&D Zone Trader
-input bool   Agent2_Sweep          = true;      // Agent 2: Liquidity Sweep Trader
-input bool   Agent3_FVGFib         = true;      // Agent 3: FVG + Fib Trader
-input bool   Agent4_Momentum       = true;      // Agent 4: Momentum Breaker
-input bool   Agent5_Trend          = true;      // Agent 5: HTF Trend Follower
+input bool   UseMultiAgentVoting   = true;    // Enable multi-agent consensus
+input int    MinAgreeCount         = 3;       // Min agents agreeing (1-5)
+input bool   Agent1_SnD            = true;    // Agent 1: S&D Zone Trader
+input bool   Agent2_Sweep          = true;    // Agent 2: Liquidity Sweep Trader
+input bool   Agent3_FVGFib         = true;    // Agent 3: FVG + Fib Trader
+input bool   Agent4_Momentum       = true;    // Agent 4: Momentum Breaker
+input bool   Agent5_Trend          = true;    // Agent 5: HTF Trend Follower
+
+input group "=== GOD MODE ==="
+input bool   GodModeEnabled        = true;    // Combine all signal sources
 
 //--- Global Variables
 datetime lastBarTime = 0;
 int zoneCount = 0;
 
-//--- Trade Reporting Globals
-string reportedTickets[];    // Track which trades we've already reported open
-string webResponse = "";
-
 //--- Aggressive Mode Globals
 datetime lastAggressiveBarTime = 0;
-datetime lastModeCheck = 0;
-bool cachedAggressiveMode = false;
-bool cachedAgentMode = false;
 double swingHighs[];
 double swingLows[];
 int swingCount = 0;
@@ -114,6 +99,16 @@ struct SZone {
 };
 
 SZone zones[];
+
+//--- GOD MODE Signal
+struct GodModeSignal {
+   bool   hasSignal;
+   int    direction;  // 1 = buy, -1 = sell
+   double entry;
+   double sl;
+   double tp;
+   string reason;
+};
 
 enum AgentVote { VOTE_NEUTRAL = 0, VOTE_BUY = 1, VOTE_SELL = -1 };
 
@@ -142,23 +137,26 @@ int OnInit() {
    trade.SetExpertMagicNumber(MagicNumber);
    trade.SetDeviationInPoints(50);
    trade.SetTypeFilling(ORDER_FILLING_IOC);
-   
+
    ArrayResize(zones, 0);
-   
+
    Print("==============================================");
-   Print("   THE BIG DOGS FX - We chase the cash");
+   Print("   THE BIG DOGS FX - GOD MODE");
+   Print("   We chase the cash");
    Print("   EA Initialized Successfully");
    Print("   Risk: ", RiskPercent, "% | BE: ", BreakevenPips, " pips");
-   Print("   Min Impulsive: ", MinImpulsivePips, " pips");
-    if(AggressiveModeEnabled) {
-       Print("   AGGRESSIVE MODE ACTIVE - TF: ", EnumToString(AggressiveTimeframe));
-       Print("   Agg Risk: ", AggressiveRiskPercent, "% | Impulse: ", AggressiveImpulsePips, " pips");
-    }
-     if(IsAgentModeEnabled()) {
-        Print("   MULTI-AGENT VOTING ACTIVE - MinAgree: ", MinAgreeCount);
-     }
+   Print("   TF: ", EnumToString(AggressiveTimeframe));
+   Print("   GOD MODE: ", GodModeEnabled ? "ENABLED" : "DISABLED");
+   Print("   AGGRESSIVE MODE: ", AggressiveModeEnabled ? "ENABLED" : "DISABLED");
+   Print("   MULTI-AGENT VOTING: ", UseMultiAgentVoting ? "ENABLED" : "DISABLED");
+   if(UseMultiAgentVoting) {
+      Print("   MinAgreeCount: ", MinAgreeCount);
+   }
+   if(GodModeEnabled) {
+      Print("   All signal sources will be combined");
+   }
    Print("==============================================");
-   
+
    return(INIT_SUCCEEDED);
 }
 
@@ -175,67 +173,35 @@ void OnDeinit(const int reason) {
 void OnTick() {
    if(!IsAllowedSymbol()) return;
 
-   ENUM_TIMEFRAMES tf = IsAggressiveMode() ? AggressiveTimeframe : PERIOD_H1;
-   datetime currentBarTime = iTime(_Symbol, tf, 0);
+   datetime currentBarTime = iTime(_Symbol, AggressiveTimeframe, 0);
 
-   if(IsAgentModeEnabled()) {
-      // === MULTI-AGENT VOTING (replaces both normal & aggressive) ===
-      if(IsAggressiveMode()) {
-         if(currentBarTime != lastAggressiveBarTime) {
-            lastAggressiveBarTime = currentBarTime;
-            UpdateAggressiveModeCache();
-            UpdateAgentModeCache();
-            ScanAggressiveSwings();
-         }
-      } else {
-         if(currentBarTime != lastBarTime) {
-            lastBarTime = currentBarTime;
-            UpdateAgentModeCache();
-            ScanForZones();
-         }
-      }
-
-      ManageOpenTrades();
-
-      if(IsWithinSession() && !IsSpreadHours() && IsSpreadOK() &&
-         CountOpenTrades() < (IsAggressiveMode() ? MathMin(MaxOpenTrades, AggressiveMaxTrades) : MaxOpenTrades)) {
-         ConsensusResult consensus = GetConsensus();
-         if(consensus.hasConsensus) {
-            ExecuteConsensusTrade(consensus);
-         }
-      }
-      return;
+   if(currentBarTime != lastBarTime) {
+      lastBarTime = currentBarTime;
+      ScanForZones(AggressiveTimeframe);
+      ScanAggressiveSwings();
    }
 
-   if(IsAggressiveMode()) {
-      // === AGGRESSIVE MODE LOGIC (M1/M5) ===
-      if(currentBarTime != lastAggressiveBarTime) {
-         lastAggressiveBarTime = currentBarTime;
-         UpdateAggressiveModeCache();
-         UpdateAgentModeCache();
-         ScanAggressiveSwings();
+   ManageOpenTrades();
+
+   if(!IsWithinSession() || IsSpreadHours() || !IsSpreadOK()) return;
+   if(CountOpenTrades() >= MathMin(MaxOpenTrades, AggressiveMaxTrades)) return;
+
+   if(GodModeEnabled) {
+      //--- GOD MODE: Combine all 3 signal sources
+      GodModeSignal sweepSignal = GetSweepSignal();
+      GodModeSignal zoneSignal  = GetZoneSignal();
+      ConsensusResult consensus = GetConsensus();
+
+      EvaluateGodModeEntry(sweepSignal, zoneSignal, consensus);
+   } else if(UseMultiAgentVoting) {
+      //--- Multi-agent voting only
+      ConsensusResult consensus = GetConsensus();
+      if(consensus.hasConsensus) {
+         ExecuteConsensusTrade(consensus);
       }
-
-      ManageOpenTrades();
-
-       if(IsWithinSession() && !IsSpreadHours() && IsSpreadOK() &&
-          CountOpenTrades() < MathMin(MaxOpenTrades, AggressiveMaxTrades)) {
-          CheckAggressiveEntries();
-       }
-    } else {
-       // === NORMAL MODE LOGIC (H1) ===
-       if(currentBarTime != lastBarTime) {
-          lastBarTime = currentBarTime;
-          UpdateAgentModeCache();
-          ScanForZones();
-       }
-
-       ManageOpenTrades();
-
-       if(IsWithinSession() && !IsSpreadHours() && IsSpreadOK() &&
-          CountOpenTrades() < MaxOpenTrades) {
-          CheckForEntries();
-       }
+   } else if(AggressiveModeEnabled) {
+      //--- Aggressive mode only
+      CheckAggressiveEntries();
    }
 }
 
@@ -244,18 +210,18 @@ void OnTick() {
 //+------------------------------------------------------------------+
 bool IsWithinSession() {
    if(!UseSessionFilter) return true;
-   
+
    MqlDateTime dt;
    TimeCurrent(dt);
    int hour = dt.hour;
    int dayOfWeek = dt.day_of_week;
-   
+
    if(dayOfWeek == 0 || dayOfWeek == 6) return false;
-   
+
    bool isLondon = (hour >= LondonStartHour && hour < LondonEndHour);
    bool isNY = (hour >= NYStartHour && hour < NYEndHour);
-   
-    return (isLondon || isNY);
+
+   return (isLondon || isNY);
 }
 
 //+------------------------------------------------------------------+
@@ -276,7 +242,6 @@ bool IsSpreadHours() {
    int nyStart = NYStartHour * 60;
    int nyEnd = NYEndHour * 60;
 
-   // Check if within first SpreadGraceMinutes of any session
    if(totalMinutes >= londonStart && totalMinutes < londonStart + SpreadGraceMinutes) return true;
    if(totalMinutes >= nyStart && totalMinutes < nyStart + SpreadGraceMinutes) return true;
 
@@ -314,82 +279,81 @@ int CountOpenTrades() {
 double CalculateLotSize(double slDistancePoints) {
    double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    double riskAmount = accountBalance * (RiskPercent / 100.0);
-   
+
    double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-   
+
    double lotSize = (riskAmount / (slDistancePoints * tickValue / tickSize));
-   
+
    double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
    double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
    double lotStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-   
+
    lotSize = MathMax(lotSize, MinLotSize);
    lotSize = MathMin(lotSize, MaxLotSize);
    lotSize = MathMax(lotSize, minLot);
    lotSize = MathMin(lotSize, maxLot);
    lotSize = MathFloor(lotSize / lotStep) * lotStep;
-   
+
    return NormalizeDouble(lotSize, 2);
 }
 
 //+------------------------------------------------------------------+
 //| Convert pips to points                                             |
-//|
 //+------------------------------------------------------------------+
 int PipsToPoints(int pips) {
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-   
+
    double pipSize = (digits == 3 || digits == 5) ? point * 10 : point;
-   
+
    return (int)MathRound(pips / pipSize * point);
 }
 
 //+------------------------------------------------------------------+
-//| Scan H1 chart for Supply/Demand zones                              |
+//| Scan charts for Supply/Demand zones on given timeframe            |
 //+------------------------------------------------------------------+
-void ScanForZones() {
+void ScanForZones(ENUM_TIMEFRAMES tf) {
    ArrayResize(zones, 0);
    zoneCount = 0;
-   
+
    double pipSize = GetPipSize();
    double minImpulseSize = MinImpulsivePips * pipSize;
-   
+
    for(int i = 2; i < MaxZoneLookback; i++) {
-      double bodySize = MathAbs(iClose(_Symbol, PERIOD_H1, i) - iOpen(_Symbol, PERIOD_H1, i));
-      double candleRange = iHigh(_Symbol, PERIOD_H1, i) - iLow(_Symbol, PERIOD_H1, i);
-      
+      double bodySize = MathAbs(iClose(_Symbol, tf, i) - iOpen(_Symbol, tf, i));
+      double candleRange = iHigh(_Symbol, tf, i) - iLow(_Symbol, tf, i);
+
       if(bodySize >= minImpulseSize && candleRange >= minImpulseSize) {
-         bool isBullishImpulse = (iClose(_Symbol, PERIOD_H1, i) - iOpen(_Symbol, PERIOD_H1, i)) > 0;
-         
+         bool isBullishImpulse = (iClose(_Symbol, tf, i) - iOpen(_Symbol, tf, i)) > 0;
+
          int prevIdx = i + 1;
          if(prevIdx >= MaxZoneLookback) continue;
-         
+
          double zoneTop, zoneBottom;
          int zoneType;
-         
+
          if(isBullishImpulse) {
-            zoneTop = iLow(_Symbol, PERIOD_H1, prevIdx);
-            zoneBottom = iLow(_Symbol, PERIOD_H1, prevIdx) - (candleRange * 0.2);
+            zoneTop = iLow(_Symbol, tf, prevIdx);
+            zoneBottom = iLow(_Symbol, tf, prevIdx) - (candleRange * 0.2);
             zoneType = -1; // Demand
          } else {
-            zoneTop = iHigh(_Symbol, PERIOD_H1, prevIdx) + (candleRange * 0.2);
-            zoneBottom = iHigh(_Symbol, PERIOD_H1, prevIdx);
+            zoneTop = iHigh(_Symbol, tf, prevIdx) + (candleRange * 0.2);
+            zoneBottom = iHigh(_Symbol, tf, prevIdx);
             zoneType = 1; // Supply
          }
-         
+
          bool hasFVG = false;
          double fvgTop = 0, fvgBottom = 0;
-         
+
          if(UseFVGConfluence) {
-            hasFVG = FindFVGNearZone(i, zoneTop, zoneBottom, zoneType, fvgTop, fvgBottom);
+            hasFVG = FindFVGNearZone(i, zoneTop, zoneBottom, zoneType, fvgTop, fvgBottom, tf);
          }
-         
+
          int idx = ArraySize(zones);
          ArrayResize(zones, idx + 1);
-         
-         zones[idx].zoneTime = iTime(_Symbol, PERIOD_H1, prevIdx);
+
+         zones[idx].zoneTime = iTime(_Symbol, tf, prevIdx);
          zones[idx].top = zoneTop;
          zones[idx].bottom = zoneBottom;
          zones[idx].type = zoneType;
@@ -397,7 +361,7 @@ void ScanForZones() {
          zones[idx].hasFVG = hasFVG;
          zones[idx].fvgTop = fvgTop;
          zones[idx].fvgBottom = fvgBottom;
-         
+
          zoneCount++;
       }
    }
@@ -406,44 +370,44 @@ void ScanForZones() {
 //+------------------------------------------------------------------+
 //| Find Fair Value Gap near a zone                                    |
 //+------------------------------------------------------------------+
-bool FindFVGNearZone(int zoneIdx, double zoneTop, double zoneBottom, int zoneType, double &fvgTop, double &fvgBottom) {
+bool FindFVGNearZone(int zoneIdx, double zoneTop, double zoneBottom, int zoneType, double &fvgTop, double &fvgBottom, ENUM_TIMEFRAMES tf) {
    for(int i = zoneIdx - 10; i <= zoneIdx + 5; i++) {
       if(i < 2) continue;
-      
-      double high1 = iHigh(_Symbol, PERIOD_H1, i - 2);
-      double low1 = iLow(_Symbol, PERIOD_H1, i - 2);
-      double high3 = iHigh(_Symbol, PERIOD_H1, i);
-      double low3 = iLow(_Symbol, PERIOD_H1, i);
-      
-      if(zoneType == -1) { // Bullish - looking for bullish FVG
+
+      double high1 = iHigh(_Symbol, tf, i - 2);
+      double low1 = iLow(_Symbol, tf, i - 2);
+      double high3 = iHigh(_Symbol, tf, i);
+      double low3 = iLow(_Symbol, tf, i);
+
+      if(zoneType == -1) {
          if(low1 > high3) {
             fvgTop = low1;
             fvgBottom = high3;
-            
+
             double zoneMid = (zoneTop + zoneBottom) / 2.0;
             double fvgMid = (fvgTop + fvgBottom) / 2.0;
             double pipSize = GetPipSize();
-            
+
             if(MathAbs(zoneMid - fvgMid) < (MinImpulsivePips * pipSize * 0.5)) {
                return true;
             }
          }
-      } else { // Bearish - looking for bearish FVG
+      } else {
          if(high1 < low3) {
             fvgTop = low3;
             fvgBottom = high1;
-            
+
             double zoneMid = (zoneTop + zoneBottom) / 2.0;
             double fvgMid = (fvgTop + fvgBottom) / 2.0;
             double pipSize = GetPipSize();
-            
+
             if(MathAbs(zoneMid - fvgMid) < (MinImpulsivePips * pipSize * 0.5)) {
                return true;
             }
          }
       }
    }
-   
+
    return false;
 }
 
@@ -459,115 +423,115 @@ double GetPipSize() {
 //+------------------------------------------------------------------+
 //| Check for candlestick patterns at zone touch                       |
 //+------------------------------------------------------------------+
-int CheckCandlestickPatterns(int zoneType) {
-   int signal = 0; // 0 = no signal, 1 = buy, -1 = sell
-   
-   if(zoneType == -1) { // Demand zone - looking for bullish patterns
-      if(UseEngulfing && IsBullishEngulfing()) signal = 1;
-      if(UseInsideBar && IsBullishInsideBarBreakout()) signal = 1;
-      if(UseMorningStar && IsMorningStar()) signal = 1;
-   } else if(zoneType == 1) { // Supply zone - looking for bearish patterns
-      if(UseEngulfing && IsBearishEngulfing()) signal = -1;
-      if(UseInsideBar && IsBearishInsideBarBreakout()) signal = -1;
-      if(UseEveningStar && IsEveningStar()) signal = -1;
+int CheckCandlestickPatterns(int zoneType, ENUM_TIMEFRAMES tf) {
+   int signal = 0;
+
+   if(zoneType == -1) {
+      if(UseEngulfing && IsBullishEngulfing(tf)) signal = 1;
+      if(UseInsideBar && IsBullishInsideBarBreakout(tf)) signal = 1;
+      if(UseMorningStar && IsMorningStar(tf)) signal = 1;
+   } else if(zoneType == 1) {
+      if(UseEngulfing && IsBearishEngulfing(tf)) signal = -1;
+      if(UseInsideBar && IsBearishInsideBarBreakout(tf)) signal = -1;
+      if(UseEveningStar && IsEveningStar(tf)) signal = -1;
    }
-   
+
    return signal;
 }
 
 //+------------------------------------------------------------------+
 //| Bullish Engulfing Pattern                                          |
 //+------------------------------------------------------------------+
-bool IsBullishEngulfing() {
-   double open1 = iOpen(_Symbol, PERIOD_H1, 1);
-   double close1 = iClose(_Symbol, PERIOD_H1, 1);
-   double open2 = iOpen(_Symbol, PERIOD_H1, 2);
-   double close2 = iClose(_Symbol, PERIOD_H1, 2);
-   
+bool IsBullishEngulfing(ENUM_TIMEFRAMES tf) {
+   double open1 = iOpen(_Symbol, tf, 1);
+   double close1 = iClose(_Symbol, tf, 1);
+   double open2 = iOpen(_Symbol, tf, 2);
+   double close2 = iClose(_Symbol, tf, 2);
+
    return (close2 < open2 && close1 > open1 && close1 > open2 && open1 < close2);
 }
 
 //+------------------------------------------------------------------+
 //| Bearish Engulfing Pattern                                          |
 //+------------------------------------------------------------------+
-bool IsBearishEngulfing() {
-   double open1 = iOpen(_Symbol, PERIOD_H1, 1);
-   double close1 = iClose(_Symbol, PERIOD_H1, 1);
-   double open2 = iOpen(_Symbol, PERIOD_H1, 2);
-   double close2 = iClose(_Symbol, PERIOD_H1, 2);
-   
+bool IsBearishEngulfing(ENUM_TIMEFRAMES tf) {
+   double open1 = iOpen(_Symbol, tf, 1);
+   double close1 = iClose(_Symbol, tf, 1);
+   double open2 = iOpen(_Symbol, tf, 2);
+   double close2 = iClose(_Symbol, tf, 2);
+
    return (close2 > open2 && close1 < open1 && close1 < open2 && open1 > close2);
 }
 
 //+------------------------------------------------------------------+
 //| Bullish Inside Bar Breakout                                        |
 //+------------------------------------------------------------------+
-bool IsBullishInsideBarBreakout() {
-   double high2 = iHigh(_Symbol, PERIOD_H1, 2);
-   double low2 = iLow(_Symbol, PERIOD_H1, 2);
-   double high1 = iHigh(_Symbol, PERIOD_H1, 1);
-   double low1 = iLow(_Symbol, PERIOD_H1, 1);
-   double close0 = iClose(_Symbol, PERIOD_H1, 0);
-   double close1 = iClose(_Symbol, PERIOD_H1, 1);
-   
+bool IsBullishInsideBarBreakout(ENUM_TIMEFRAMES tf) {
+   double high2 = iHigh(_Symbol, tf, 2);
+   double low2 = iLow(_Symbol, tf, 2);
+   double high1 = iHigh(_Symbol, tf, 1);
+   double low1 = iLow(_Symbol, tf, 1);
+   double close0 = iClose(_Symbol, tf, 0);
+   double close1 = iClose(_Symbol, tf, 1);
+
    bool isInsideBar = (high1 < high2 && low1 > low2);
    bool isBreakout = (close0 > high1 || close1 > high1);
-   
+
    return (isInsideBar && isBreakout);
 }
 
 //+------------------------------------------------------------------+
 //| Bearish Inside Bar Breakout                                        |
 //+------------------------------------------------------------------+
-bool IsBearishInsideBarBreakout() {
-   double high2 = iHigh(_Symbol, PERIOD_H1, 2);
-   double low2 = iLow(_Symbol, PERIOD_H1, 2);
-   double high1 = iHigh(_Symbol, PERIOD_H1, 1);
-   double low1 = iLow(_Symbol, PERIOD_H1, 1);
-   double close0 = iClose(_Symbol, PERIOD_H1, 0);
-   double close1 = iClose(_Symbol, PERIOD_H1, 1);
-   
+bool IsBearishInsideBarBreakout(ENUM_TIMEFRAMES tf) {
+   double high2 = iHigh(_Symbol, tf, 2);
+   double low2 = iLow(_Symbol, tf, 2);
+   double high1 = iHigh(_Symbol, tf, 1);
+   double low1 = iLow(_Symbol, tf, 1);
+   double close0 = iClose(_Symbol, tf, 0);
+   double close1 = iClose(_Symbol, tf, 1);
+
    bool isInsideBar = (high1 < high2 && low1 > low2);
    bool isBreakout = (close0 < low1 || close1 < low1);
-   
+
    return (isInsideBar && isBreakout);
 }
 
 //+------------------------------------------------------------------+
 //| Morning Star Pattern (Bullish Reversal)                            |
 //+------------------------------------------------------------------+
-bool IsMorningStar() {
-   double open3 = iOpen(_Symbol, PERIOD_H1, 3);
-   double close3 = iClose(_Symbol, PERIOD_H1, 3);
-   double open2 = iOpen(_Symbol, PERIOD_H1, 2);
-   double close2 = iClose(_Symbol, PERIOD_H1, 2);
-   double open1 = iOpen(_Symbol, PERIOD_H1, 1);
-   double close1 = iClose(_Symbol, PERIOD_H1, 1);
-   
+bool IsMorningStar(ENUM_TIMEFRAMES tf) {
+   double open3 = iOpen(_Symbol, tf, 3);
+   double close3 = iClose(_Symbol, tf, 3);
+   double open2 = iOpen(_Symbol, tf, 2);
+   double close2 = iClose(_Symbol, tf, 2);
+   double open1 = iOpen(_Symbol, tf, 1);
+   double close1 = iClose(_Symbol, tf, 1);
+
    bool firstBearish = (close3 < open3);
    bool smallBody = (MathAbs(close2 - open2) < (MathAbs(close3 - open3) * 0.3));
    bool secondBullish = (close1 > open1);
    bool penetrates = (close1 > (open3 + close3) / 2.0);
-   
+
    return (firstBearish && smallBody && secondBullish && penetrates);
 }
 
 //+------------------------------------------------------------------+
 //| Evening Star Pattern (Bearish Reversal)                            |
 //+------------------------------------------------------------------+
-bool IsEveningStar() {
-   double open3 = iOpen(_Symbol, PERIOD_H1, 3);
-   double close3 = iClose(_Symbol, PERIOD_H1, 3);
-   double open2 = iOpen(_Symbol, PERIOD_H1, 2);
-   double close2 = iClose(_Symbol, PERIOD_H1, 2);
-   double open1 = iOpen(_Symbol, PERIOD_H1, 1);
-   double close1 = iClose(_Symbol, PERIOD_H1, 1);
-   
+bool IsEveningStar(ENUM_TIMEFRAMES tf) {
+   double open3 = iOpen(_Symbol, tf, 3);
+   double close3 = iClose(_Symbol, tf, 3);
+   double open2 = iOpen(_Symbol, tf, 2);
+   double close2 = iClose(_Symbol, tf, 2);
+   double open1 = iOpen(_Symbol, tf, 1);
+   double close1 = iClose(_Symbol, tf, 1);
+
    bool firstBullish = (close3 > open3);
    bool smallBody = (MathAbs(close2 - open2) < (MathAbs(close3 - open3) * 0.3));
    bool secondBearish = (close1 < open1);
    bool penetrates = (close1 < (open3 + close3) / 2.0);
-   
+
    return (firstBullish && smallBody && secondBearish && penetrates);
 }
 
@@ -579,21 +543,21 @@ int CheckZoneTouch() {
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double pipSize = GetPipSize();
    double touchBuffer = pipSize * 5;
-   
+
    for(int i = 0; i < ArraySize(zones); i++) {
       if(!zones[i].isValid) continue;
-      
-      if(zones[i].type == -1) { // Demand zone
+
+      if(zones[i].type == -1) {
          if(bid <= zones[i].top + touchBuffer && bid >= zones[i].bottom - touchBuffer) {
-            return -1; // Price in demand zone
+            return -1;
          }
-      } else if(zones[i].type == 1) { // Supply zone
+      } else if(zones[i].type == 1) {
          if(ask >= zones[i].bottom - touchBuffer && ask <= zones[i].top + touchBuffer) {
-            return 1; // Price in supply zone
+            return 1;
          }
       }
    }
-   
+
    return 0;
 }
 
@@ -605,10 +569,10 @@ bool GetEntryZone(int zoneType, SZone &zone) {
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double pipSize = GetPipSize();
    double touchBuffer = pipSize * 5;
-   
+
    for(int i = 0; i < ArraySize(zones); i++) {
       if(!zones[i].isValid || zones[i].type != zoneType) continue;
-      
+
       if(zoneType == -1) {
          if(bid <= zones[i].top + touchBuffer && bid >= zones[i].bottom - touchBuffer) {
             zone = zones[i];
@@ -621,199 +585,122 @@ bool GetEntryZone(int zoneType, SZone &zone) {
          }
       }
    }
-   
+
    return false;
 }
 
 //+------------------------------------------------------------------+
 //| Find next structure level for TP                                   |
 //+------------------------------------------------------------------+
-double FindNextStructureLevel(int direction, double currentPrice) {
+double FindNextStructureLevel(int direction, double currentPrice, ENUM_TIMEFRAMES tf) {
    double pipSize = GetPipSize();
    int lookback = 100;
-   
-   if(direction == 1) { // Looking for resistance (bullish TP)
+
+   if(direction == 1) {
       for(int i = 2; i < lookback; i++) {
-         double high = iHigh(_Symbol, PERIOD_H1, i);
+         double high = iHigh(_Symbol, tf, i);
          if(high > currentPrice + (10 * pipSize)) {
             return high;
          }
       }
-   } else { // Looking for support (bearish TP)
+   } else {
       for(int i = 2; i < lookback; i++) {
-         double low = iLow(_Symbol, PERIOD_H1, i);
+         double low = iLow(_Symbol, tf, i);
          if(low < currentPrice - (10 * pipSize)) {
             return low;
          }
       }
    }
-   
+
    return 0;
 }
 
 //+------------------------------------------------------------------+
 //| Find next opposite zone for TP                                     |
 //+------------------------------------------------------------------+
-double FindOppositeZoneLevel(int direction, double currentPrice) {
+double FindOppositeZoneLevel(int direction) {
    for(int i = 0; i < ArraySize(zones); i++) {
       if(!zones[i].isValid) continue;
-      
-      if(direction == 1 && zones[i].type == 1) { // Bullish trade, find supply zone
-         if(zones[i].bottom > currentPrice) {
+
+      if(direction == 1 && zones[i].type == 1) {
+         if(zones[i].bottom > SymbolInfoDouble(_Symbol, SYMBOL_ASK)) {
             return zones[i].bottom;
          }
-      } else if(direction == -1 && zones[i].type == -1) { // Bearish trade, find demand zone
-         if(zones[i].top < currentPrice) {
+      } else if(direction == -1 && zones[i].type == -1) {
+         if(zones[i].top < SymbolInfoDouble(_Symbol, SYMBOL_BID)) {
             return zones[i].top;
          }
       }
    }
-   
+
    return 0;
 }
 
 //+------------------------------------------------------------------+
-//| Check for entry signals                                            |
+//| GOD MODE: Get zone + pattern signal                                |
 //+------------------------------------------------------------------+
-void CheckForEntries() {
+GodModeSignal GetZoneSignal() {
+   GodModeSignal sig;
+   sig.hasSignal = false;
+   sig.direction = 0;
+   sig.entry = 0; sig.sl = 0; sig.tp = 0; sig.reason = "";
+
    int zoneType = CheckZoneTouch();
-   
-   if(zoneType == 0) return;
-   
-   int patternSignal = CheckCandlestickPatterns(zoneType);
-   
-   if(patternSignal == 0) return;
-   
-   if(zoneType != patternSignal) return;
-   
+   if(zoneType == 0) return sig;
+
+   int patternSignal = CheckCandlestickPatterns(zoneType, AggressiveTimeframe);
+   if(patternSignal == 0) return sig;
+   if(zoneType != patternSignal) return sig;
+
    SZone entryZone;
-   if(!GetEntryZone(zoneType, entryZone)) return;
-   
+   if(!GetEntryZone(zoneType, entryZone)) return sig;
+
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double pipSize = GetPipSize();
-   
-   double slDistance, tpDistance;
-   double sl, tp;
-   
-   if(patternSignal == 1) { // BUY
-      sl = entryZone.bottom - (ExtraSLPips * pipSize);
-      slDistance = (bid - sl) / pipSize;
-      
-      if(slDistance < 10) return;
-      
-      double lotSize = CalculateLotSize(slDistance * ((SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 3 || SymbolInfoInteger(_Symbol, SYMBOL_DIGITS) == 5) ? 10.0 : 1.0));
-      
+
+   if(patternSignal == 1) {
+      sig.direction = 1;
+      sig.entry = ask;
+      sig.sl = entryZone.bottom - (ExtraSLPips * pipSize);
+      double slDistance = (bid - sig.sl) / pipSize;
+      if(slDistance < 10) { sig.hasSignal = false; return sig; }
+
       double structureTP = 0;
       if(UseStructureTP) {
-         structureTP = FindNextStructureLevel(1, ask);
-         double oppositeZoneTP = FindOppositeZoneLevel(1, ask);
+         structureTP = FindNextStructureLevel(1, ask, AggressiveTimeframe);
+         double oppositeZoneTP = FindOppositeZoneLevel(1);
          if(oppositeZoneTP > 0) structureTP = MathMin(structureTP, oppositeZoneTP);
       }
-      
-      tp = structureTP > 0 ? structureTP : ask + (slDistance * MinRRRatio * pipSize);
-      tpDistance = (tp - ask) / pipSize;
-      
+      sig.tp = structureTP > 0 ? structureTP : ask + (slDistance * MinRRRatio * pipSize);
+      double tpDistance = (sig.tp - ask) / pipSize;
       if(tpDistance / slDistance < MinRRRatio && structureTP > 0) {
-         tp = ask + (slDistance * MinRRRatio * pipSize);
+         sig.tp = ask + (slDistance * MinRRRatio * pipSize);
       }
-      
-      sl = NormalizeDouble(sl, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
-      tp = NormalizeDouble(tp, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
-      lotSize = NormalizeDouble(lotSize, 2);
-      
-       if(trade.Buy(lotSize, _Symbol, ask, sl, tp, "BigDogsFX Buy")) {
-          Print("BUY Order Placed | Lot: ", lotSize, " | SL: ", sl, " | TP: ", tp);
-          if(EnableTradeReporting) {
-             ulong ticket = GetLastPositionTicket();
-             ReportTradeOpen(ticket, _Symbol, "buy", lotSize, ask, sl, tp, "Normal Buy");
-          }
-       }
-       
-    } else if(patternSignal == -1) { // SELL
-       sl = entryZone.top + (ExtraSLPips * pipSize);
-       slDistance = (sl - bid) / pipSize;
-       
-       if(slDistance < 10) return;
-       
-       double lotSize = CalculateLotSize(slDistance);
-       
-       double structureTP = 0;
-       if(UseStructureTP) {
-          structureTP = FindNextStructureLevel(-1, bid);
-          double oppositeZoneTP = FindOppositeZoneLevel(-1, bid);
-          if(oppositeZoneTP > 0) structureTP = MathMax(structureTP, oppositeZoneTP);
-       }
-       
-       tp = structureTP > 0 ? structureTP : bid - (slDistance * MinRRRatio * pipSize);
-       tpDistance = (bid - tp) / pipSize;
-       
-       if(tpDistance / slDistance < MinRRRatio && structureTP > 0) {
-          tp = bid - (slDistance * MinRRRatio * pipSize);
-       }
-       
-       sl = NormalizeDouble(sl, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
-       tp = NormalizeDouble(tp, (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS));
-       lotSize = NormalizeDouble(lotSize, 2);
-       
-       if(trade.Sell(lotSize, _Symbol, bid, sl, tp, "BigDogsFX Sell")) {
-          Print("SELL Order Placed | Lot: ", lotSize, " | SL: ", sl, " | TP: ", tp);
-          if(EnableTradeReporting) {
-             ulong ticket = GetLastPositionTicket();
-             ReportTradeOpen(ticket, _Symbol, "sell", lotSize, bid, sl, tp, "Normal Sell");
-          }
-       }
-   }
-}
+      sig.reason = "Demand zone + pattern";
+   } else {
+      sig.direction = -1;
+      sig.entry = bid;
+      sig.sl = entryZone.top + (ExtraSLPips * pipSize);
+      double slDistance = (sig.sl - bid) / pipSize;
+      if(slDistance < 10) { sig.hasSignal = false; return sig; }
 
-//+------------------------------------------------------------------+
-//| Check if aggressive mode is active                                |
-//+------------------------------------------------------------------+
-bool IsAggressiveMode() {
-   if(AggressiveModeEnabled) return true;
-   return cachedAggressiveMode;
-}
-
-//+------------------------------------------------------------------+
-//| Update aggressive mode cache from file on new bar                |
-//+------------------------------------------------------------------+
-void UpdateAggressiveModeCache() {
-   int handle = FileOpen("BigDogsFX_Mode.cfg", FILE_TXT|FILE_READ|FILE_COMMON, 0);
-   if(handle != INVALID_HANDLE) {
-      string content = "";
-      while(!FileIsEnding(handle)) {
-         content += FileReadString(handle);
+      double structureTP = 0;
+      if(UseStructureTP) {
+         structureTP = FindNextStructureLevel(-1, bid, AggressiveTimeframe);
+         double oppositeZoneTP = FindOppositeZoneLevel(-1);
+         if(oppositeZoneTP > 0) structureTP = MathMax(structureTP, oppositeZoneTP);
       }
-      FileClose(handle);
-      StringReplace(content, "\n", "");
-      StringReplace(content, "\r", "");
-      cachedAggressiveMode = (content == "mode=aggressive");
-   }
-}
-
-//+------------------------------------------------------------------+
-//| Update agent voting cache from file on new bar                   |
-//+------------------------------------------------------------------+
-void UpdateAgentModeCache() {
-   int handle = FileOpen("BigDogsFX_Agents.cfg", FILE_TXT|FILE_READ|FILE_COMMON, 0);
-   if(handle != INVALID_HANDLE) {
-      string content = "";
-      while(!FileIsEnding(handle)) {
-         content += FileReadString(handle);
+      sig.tp = structureTP > 0 ? structureTP : bid - (slDistance * MinRRRatio * pipSize);
+      double tpDistance = (bid - sig.tp) / pipSize;
+      if(tpDistance / slDistance < MinRRRatio && structureTP > 0) {
+         sig.tp = bid - (slDistance * MinRRRatio * pipSize);
       }
-      FileClose(handle);
-      StringReplace(content, "\n", "");
-      StringReplace(content, "\r", "");
-      cachedAgentMode = (content == "agents=enabled");
+      sig.reason = "Supply zone + pattern";
    }
-}
 
-//+------------------------------------------------------------------+
-//| Check if multi-agent voting is active                            |
-//+------------------------------------------------------------------+
-bool IsAgentModeEnabled() {
-   if(UseMultiAgentVoting) return true;
-   return cachedAgentMode;
+   sig.hasSignal = true;
+   return sig;
 }
 
 //+------------------------------------------------------------------+
@@ -823,25 +710,23 @@ void ScanAggressiveSwings() {
    ArrayResize(swingHighs, 0);
    ArrayResize(swingLows, 0);
    swingCount = 0;
-   
+
    int lookback = AggressiveMinSwingBars * 3;
    for(int i = 2; i < lookback; i++) {
-      // Swing high: candle i-1 has higher high than both neighbors
       double high1 = iHigh(_Symbol, AggressiveTimeframe, i - 1);
       double high0 = iHigh(_Symbol, AggressiveTimeframe, i);
       double high2 = iHigh(_Symbol, AggressiveTimeframe, i - 2);
-      
+
       if(high1 > high0 && high1 > high2) {
          int idx = ArraySize(swingHighs);
          ArrayResize(swingHighs, idx + 1);
          swingHighs[idx] = high1;
       }
-      
-      // Swing low: candle i-1 has lower low than both neighbors
+
       double low1 = iLow(_Symbol, AggressiveTimeframe, i - 1);
       double low0 = iLow(_Symbol, AggressiveTimeframe, i);
       double low2 = iLow(_Symbol, AggressiveTimeframe, i - 2);
-      
+
       if(low1 < low0 && low1 < low2) {
          int idx = ArraySize(swingLows);
          ArrayResize(swingLows, idx + 1);
@@ -857,42 +742,37 @@ bool DetectLiquiditySweep(double currentBid, double currentAsk,
                           double &sweptLevel, int &sweepDirection) {
    double pipSize = GetPipSize();
    double sweepBuffer = pipSize * 3;
-   
-   // Check bullish setup: price swept below a recent swing low
-   // and is now trading back above that level
+
    for(int i = 0; i < ArraySize(swingLows); i++) {
-      // Find the lowest price in recent bars to confirm sweep
       double lowestSinceSwing = DBL_MAX;
       for(int b = 1; b <= 5; b++) {
          double low = iLow(_Symbol, AggressiveTimeframe, b);
          if(low < lowestSinceSwing) lowestSinceSwing = low;
       }
-      
+
       if(lowestSinceSwing <= swingLows[i] + sweepBuffer &&
          currentBid >= swingLows[i] - pipSize) {
          sweptLevel = swingLows[i];
-         sweepDirection = 1; // Bullish (swept low, looking for buy)
+         sweepDirection = 1;
          return true;
       }
    }
-   
-   // Check bearish setup: price swept above a recent swing high
-   // and is now trading back below that level
+
    for(int i = 0; i < ArraySize(swingHighs); i++) {
       double highestSinceSwing = 0;
       for(int b = 1; b <= 5; b++) {
          double high = iHigh(_Symbol, AggressiveTimeframe, b);
          if(high > highestSinceSwing) highestSinceSwing = high;
       }
-      
+
       if(highestSinceSwing >= swingHighs[i] - sweepBuffer &&
          currentAsk <= swingHighs[i] + pipSize) {
          sweptLevel = swingHighs[i];
-         sweepDirection = -1; // Bearish (swept high, looking for sell)
+         sweepDirection = -1;
          return true;
       }
    }
-   
+
    return false;
 }
 
@@ -904,58 +784,55 @@ bool DetectCHoSD(double sweptLevel, int sweepDirection,
    double pipSize = GetPipSize();
    double minImpulse = AggressiveImpulsePips * pipSize;
    double currentBid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   
+
    if(sweepDirection == 1) {
-      // Bullish: after sweeping low, look for consecutive bullish candles
-      // Check last 3 candles for impulsive buying
       double maxHigh = 0;
       double totalBullBody = 0;
       int bullCount = 0;
-      
+
       for(int i = 1; i <= 3; i++) {
          double open = iOpen(_Symbol, AggressiveTimeframe, i);
          double close = iClose(_Symbol, AggressiveTimeframe, i);
          double high = iHigh(_Symbol, AggressiveTimeframe, i);
          double low = iLow(_Symbol, AggressiveTimeframe, i);
-         
+
          if(close > open && (close - open) >= minImpulse * 0.5) {
             bullCount++;
             totalBullBody += (close - open);
             if(high > maxHigh) maxHigh = high;
          }
       }
-      
+
       if(bullCount >= 2 && totalBullBody >= minImpulse * 1.5) {
          impulseHigh = maxHigh;
          impulseLow = sweptLevel - pipSize;
          return true;
       }
    } else if(sweepDirection == -1) {
-      // Bearish: after sweeping high, look for consecutive bearish candles
       double minLow = DBL_MAX;
       double totalBearBody = 0;
       int bearCount = 0;
-      
+
       for(int i = 1; i <= 3; i++) {
          double open = iOpen(_Symbol, AggressiveTimeframe, i);
          double close = iClose(_Symbol, AggressiveTimeframe, i);
          double high = iHigh(_Symbol, AggressiveTimeframe, i);
          double low = iLow(_Symbol, AggressiveTimeframe, i);
-         
+
          if(close < open && (open - close) >= minImpulse * 0.5) {
             bearCount++;
             totalBearBody += (open - close);
             if(low < minLow) minLow = low;
          }
       }
-      
+
       if(bearCount >= 2 && totalBearBody >= minImpulse * 1.5) {
          impulseHigh = sweptLevel + pipSize;
          impulseLow = minLow;
          return true;
       }
    }
-   
+
    return false;
 }
 
@@ -966,34 +843,23 @@ bool FindIFVGNearFib(int sweepDirection, double fibStart, double fibEnd,
                      double &entryPrice, double &fvgTop, double &fvgBottom) {
    int lookback = MathMax(AggressiveMinSwingBars, 15);
    double pipSize = GetPipSize();
-   
-   // Calculate fib levels
+
    double range = MathAbs(fibEnd - fibStart);
    double fib50 = fibStart + (sweepDirection == 1 ? 0.50 * range : -0.50 * range);
    double fib618 = fibStart + (sweepDirection == 1 ? 0.618 * range : -0.618 * range);
    double fib786 = fibStart + (sweepDirection == 1 ? 0.786 * range : -0.786 * range);
-   
+
    double fibLevels[3] = {fib50, fib618, fib786};
-   double fibValues[3] = {0.50, 0.618, 0.786};
-   
+
    if(sweepDirection == 1) {
-      // Bullish - look for Inverse FVG (IFVG) on lower timeframe
-      // IFVG: 3-candle pattern where low of candle 1 > high of candle 3
-      // and candle 2 is the bearish impulse creating the gap
       for(int i = 3; i < lookback; i++) {
          double low1 = iLow(_Symbol, AggressiveTimeframe, i - 2);
          double high3 = iHigh(_Symbol, AggressiveTimeframe, i);
-         double low3 = iLow(_Symbol, AggressiveTimeframe, i);
-         double high2 = iHigh(_Symbol, AggressiveTimeframe, i - 1);
-         double low2 = iLow(_Symbol, AggressiveTimeframe, i - 1);
-         
-         // IFVG exists: low of candle 1 > high of candle 3
+
          if(low1 > high3) {
             double ifvgTop = low1;
             double ifvgBottom = high3;
-            double ifvgMid = (ifvgTop + ifvgBottom) / 2.0;
-            
-            // Check if any fib level falls within the IFVG
+
             for(int f = 0; f < 3; f++) {
                if(fibLevels[f] >= ifvgBottom - pipSize &&
                   fibLevels[f] <= ifvgTop + pipSize) {
@@ -1006,48 +872,40 @@ bool FindIFVGNearFib(int sweepDirection, double fibStart, double fibEnd,
          }
       }
    } else if(sweepDirection == -1) {
-      // Bearish - look for standard FVG
-      // FVG: 3-candle pattern where high of candle 1 < low of candle 3
       for(int i = 3; i < lookback; i++) {
          double high1 = iHigh(_Symbol, AggressiveTimeframe, i - 2);
          double low3 = iLow(_Symbol, AggressiveTimeframe, i);
-         
-         // FVG exists: high of candle 1 < low of candle 3
+
          if(high1 < low3) {
-            double fvgTop = low3;
-            double fvgBottom = high1;
-            
-            // Check if any fib level falls within the FVG
+            fvgTop = low3;
+            fvgBottom = high1;
+
             for(int f = 0; f < 3; f++) {
                if(fibLevels[f] >= fvgBottom - pipSize &&
                   fibLevels[f] <= fvgTop + pipSize) {
                   entryPrice = fibLevels[f];
-                  fvgTop = fvgTop;
-                  fvgBottom = fvgBottom;
                   return true;
                }
             }
          }
       }
    }
-   
+
    return false;
 }
 
 //+------------------------------------------------------------------+
-//| Find next liquidity target for TP in aggressive mode              |
+//| Find next liquidity target for TP in aggressive mode               |
 //+------------------------------------------------------------------+
 double FindNextLiquidityTarget(int sweepDirection, double currentPrice) {
    double pipSize = GetPipSize();
-   
+
    if(sweepDirection == 1) {
-      // Bullish: next swing high above price
       for(int i = 0; i < ArraySize(swingHighs); i++) {
          if(swingHighs[i] > currentPrice + (5 * pipSize)) {
             return swingHighs[i];
          }
       }
-      // Fallback: look at candle highs
       for(int i = 1; i <= 50; i++) {
          double high = iHigh(_Symbol, AggressiveTimeframe, i);
          if(high > currentPrice + (5 * pipSize)) {
@@ -1055,13 +913,11 @@ double FindNextLiquidityTarget(int sweepDirection, double currentPrice) {
          }
       }
    } else {
-      // Bearish: next swing low below price
       for(int i = 0; i < ArraySize(swingLows); i++) {
          if(swingLows[i] < currentPrice - (5 * pipSize)) {
             return swingLows[i];
          }
       }
-      // Fallback: look at candle lows
       for(int i = 1; i <= 50; i++) {
          double low = iLow(_Symbol, AggressiveTimeframe, i);
          if(low < currentPrice - (5 * pipSize)) {
@@ -1069,7 +925,7 @@ double FindNextLiquidityTarget(int sweepDirection, double currentPrice) {
          }
       }
    }
-   
+
    return 0;
 }
 
@@ -1079,160 +935,190 @@ double FindNextLiquidityTarget(int sweepDirection, double currentPrice) {
 double CalculateAggressiveLotSize(double slDistancePips) {
    double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    double riskAmount = accountBalance * (AggressiveRiskPercent / 100.0);
-   
+
    double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-   
+
    double lotSize = (riskAmount / (slDistancePips * tickValue / tickSize));
-   
+
    double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
    double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
    double lotStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-   
+
    lotSize = MathMax(lotSize, MinLotSize);
    lotSize = MathMin(lotSize, MaxLotSize);
    lotSize = MathMax(lotSize, minLot);
    lotSize = MathMin(lotSize, maxLot);
    lotSize = MathFloor(lotSize / lotStep) * lotStep;
-   
+
    return NormalizeDouble(lotSize, 2);
 }
 
 //+------------------------------------------------------------------+
-//| Check for aggressive entry signals (liquidity sweep + CHoSD +   |
-//| IFVG/FVG at fib levels)                                         |
+//| GOD MODE: Get aggressive sweep signal                              |
 //+------------------------------------------------------------------+
-void CheckAggressiveEntries() {
-   // Only trade during London/NY sessions, avoid spread hours
-   if(!IsWithinSession() || IsSpreadHours()) return;
-   
+GodModeSignal GetSweepSignal() {
+   GodModeSignal sig;
+   sig.hasSignal = false;
+   sig.direction = 0;
+   sig.entry = 0; sig.sl = 0; sig.tp = 0; sig.reason = "";
+
+   if(!IsWithinSession() || IsSpreadHours()) return sig;
+
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double pipSize = GetPipSize();
-   
-   // Step 1: Detect liquidity sweep
+
    double sweptLevel;
-   int sweepDirection; // 1 = bullish (swept low), -1 = bearish (swept high)
-   
-   if(!DetectLiquiditySweep(bid, ask, sweptLevel, sweepDirection)) return;
-   
-   // Step 2: Detect Change in State of Delivery
+   int sweepDirection;
+
+   if(!DetectLiquiditySweep(bid, ask, sweptLevel, sweepDirection)) return sig;
+
    double impulseHigh, impulseLow;
-   if(!DetectCHoSD(sweptLevel, sweepDirection, impulseHigh, impulseLow)) return;
-   
-   // Fib start/end based on sweep direction
-   double fibStart, fibEnd;
-   if(sweepDirection == 1) {
-      fibStart = sweptLevel;    // Sweep low = start of fib
-      fibEnd = impulseHigh;     // Impulse high = end of fib
-   } else {
-      fibStart = sweptLevel;    // Sweep high = start of fib
-      fibEnd = impulseLow;      // Impulse low = end of fib
-   }
-   
+   if(!DetectCHoSD(sweptLevel, sweepDirection, impulseHigh, impulseLow)) return sig;
+
+   double fibStart = sweptLevel;
+   double fibEnd = (sweepDirection == 1) ? impulseHigh : impulseLow;
    double fibRange = MathAbs(fibEnd - fibStart);
-   if(fibRange < AggressiveImpulsePips * pipSize * 2) return; // Too small
-   
-   // Step 3: Find IFVG/FVG at fib retracement levels
+   if(fibRange < AggressiveImpulsePips * pipSize * 2) return sig;
+
    double entryPrice, fvgTop, fvgBottom;
-   if(!FindIFVGNearFib(sweepDirection, fibStart, fibEnd,
-                       entryPrice, fvgTop, fvgBottom)) return;
-   
-   // Step 4: No-negative-drawdown check
-   // Price must be at or very near the entry level (within 2 pips)
-   // The FVG/IFVG void naturally prevents drawdown since no orders
-   // sit in the gap - entry at a fib level within this gap means
-   // price must fill the gap before any retracement can occur
+   if(!FindIFVGNearFib(sweepDirection, fibStart, fibEnd, entryPrice, fvgTop, fvgBottom)) return sig;
+
    double currentPrice = (sweepDirection == 1) ? bid : ask;
    double priceDelta = MathAbs(currentPrice - entryPrice);
-   if(priceDelta > pipSize * 2) return;
-   
-   // Verify entry is within FVG/IFVG boundaries
+   if(priceDelta > pipSize * 2) return sig;
+
    if(sweepDirection == 1) {
-      // For BUY: entry must be at or above IFVG bottom
-      if(entryPrice < fvgBottom - pipSize) return;
-      // No overhead supply in the IFVG gap prevents drawdown
+      if(entryPrice < fvgBottom - pipSize) return sig;
    } else {
-      // For SELL: entry must be at or below FVG top
-      if(entryPrice > fvgTop + pipSize) return;
-      // No bid support in the FVG gap prevents drawdown
+      if(entryPrice > fvgTop + pipSize) return sig;
    }
-   
-   // Step 5: Calculate SL and TP
+
    double sl, tp;
    double slDistancePips, tpDistancePips;
-   
+
    if(sweepDirection == 1) {
-      // BUY setup
-      // SL just below the swept low, or below IFVG bottom (whichever is lower)
       sl = MathMin(sweptLevel, fvgBottom) - (ExtraSLPips * pipSize);
       slDistancePips = (entryPrice - sl) / pipSize;
-      
-      if(slDistancePips < 5) return; // SL too tight
-      
-      // TP at next liquidity (swing high)
+      if(slDistancePips < 5) return sig;
+
       tp = FindNextLiquidityTarget(1, entryPrice);
       if(tp == 0 || tp <= entryPrice + (3 * pipSize)) {
          tp = entryPrice + (slDistancePips * AggressiveMinRR * pipSize);
       }
       tpDistancePips = (tp - entryPrice) / pipSize;
-      
    } else {
-      // SELL setup
-      // SL just above the swept high, or above FVG top (whichever is higher)
       sl = MathMax(sweptLevel, fvgTop) + (ExtraSLPips * pipSize);
       slDistancePips = (sl - entryPrice) / pipSize;
-      
-      if(slDistancePips < 5) return; // SL too tight
-      
-      // TP at next liquidity (swing low)
+      if(slDistancePips < 5) return sig;
+
       tp = FindNextLiquidityTarget(-1, entryPrice);
       if(tp == 0 || tp >= entryPrice - (3 * pipSize)) {
          tp = entryPrice - (slDistancePips * AggressiveMinRR * pipSize);
       }
       tpDistancePips = (entryPrice - tp) / pipSize;
    }
-   
-   // Check minimum RR ratio
+
    if(tpDistancePips / slDistancePips < AggressiveMinRR) {
       tp = sweepDirection == 1
          ? entryPrice + (slDistancePips * AggressiveMinRR * pipSize)
          : entryPrice - (slDistancePips * AggressiveMinRR * pipSize);
    }
-   
-   // Step 6: Place the trade
+
+   sig.hasSignal = true;
+   sig.direction = sweepDirection;
+   sig.entry = entryPrice;
+   sig.sl = sl;
+   sig.tp = tp;
+   sig.reason = (sweepDirection == 1) ? "Sweep+CHoSD+IFVG/Fib" : "Sweep+CHoSD+FVG/Fib";
+
+   return sig;
+}
+
+//+------------------------------------------------------------------+
+//| Check for aggressive entry signals (legacy - places trade)        |
+//+------------------------------------------------------------------+
+void CheckAggressiveEntries() {
+   if(!IsWithinSession() || IsSpreadHours()) return;
+
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double pipSize = GetPipSize();
+
+   double sweptLevel;
+   int sweepDirection;
+
+   if(!DetectLiquiditySweep(bid, ask, sweptLevel, sweepDirection)) return;
+
+   double impulseHigh, impulseLow;
+   if(!DetectCHoSD(sweptLevel, sweepDirection, impulseHigh, impulseLow)) return;
+
+   double fibStart = sweptLevel;
+   double fibEnd = (sweepDirection == 1) ? impulseHigh : impulseLow;
+   double fibRange = MathAbs(fibEnd - fibStart);
+   if(fibRange < AggressiveImpulsePips * pipSize * 2) return;
+
+   double entryPrice, fvgTop, fvgBottom;
+   if(!FindIFVGNearFib(sweepDirection, fibStart, fibEnd, entryPrice, fvgTop, fvgBottom)) return;
+
+   double currentPrice = (sweepDirection == 1) ? bid : ask;
+   double priceDelta = MathAbs(currentPrice - entryPrice);
+   if(priceDelta > pipSize * 2) return;
+
+   if(sweepDirection == 1) {
+      if(entryPrice < fvgBottom - pipSize) return;
+   } else {
+      if(entryPrice > fvgTop + pipSize) return;
+   }
+
+   double sl, tp;
+   double slDistancePips, tpDistancePips;
+
+   if(sweepDirection == 1) {
+      sl = MathMin(sweptLevel, fvgBottom) - (ExtraSLPips * pipSize);
+      slDistancePips = (entryPrice - sl) / pipSize;
+      if(slDistancePips < 5) return;
+      tp = FindNextLiquidityTarget(1, entryPrice);
+      if(tp == 0 || tp <= entryPrice + (3 * pipSize)) {
+         tp = entryPrice + (slDistancePips * AggressiveMinRR * pipSize);
+      }
+      tpDistancePips = (tp - entryPrice) / pipSize;
+   } else {
+      sl = MathMax(sweptLevel, fvgTop) + (ExtraSLPips * pipSize);
+      slDistancePips = (sl - entryPrice) / pipSize;
+      if(slDistancePips < 5) return;
+      tp = FindNextLiquidityTarget(-1, entryPrice);
+      if(tp == 0 || tp >= entryPrice - (3 * pipSize)) {
+         tp = entryPrice - (slDistancePips * AggressiveMinRR * pipSize);
+      }
+      tpDistancePips = (entryPrice - tp) / pipSize;
+   }
+
+   if(tpDistancePips / slDistancePips < AggressiveMinRR) {
+      tp = sweepDirection == 1
+         ? entryPrice + (slDistancePips * AggressiveMinRR * pipSize)
+         : entryPrice - (slDistancePips * AggressiveMinRR * pipSize);
+   }
+
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    double lotSize = CalculateAggressiveLotSize(slDistancePips);
-   
+
    sl = NormalizeDouble(sl, digits);
    tp = NormalizeDouble(tp, digits);
    lotSize = NormalizeDouble(lotSize, 2);
-   
-    if(sweepDirection == 1) {
-       if(trade.Buy(lotSize, _Symbol, ask, sl, tp,
-          "BigDogsFX Agg Buy")) {
-          Print("AGGRESSIVE BUY | Lot: ", lotSize,
-                " | Entry: ", entryPrice,
-                " | SL: ", sl, " | TP: ", tp,
-                " | Sweep: ", sweptLevel);
-          if(EnableTradeReporting) {
-             ulong ticket = GetLastPositionTicket();
-             ReportTradeOpen(ticket, _Symbol, "buy", lotSize, ask, sl, tp, "Aggressive Buy");
-          }
-       }
-    } else {
-       if(trade.Sell(lotSize, _Symbol, bid, sl, tp,
-          "BigDogsFX Agg Sell")) {
-          Print("AGGRESSIVE SELL | Lot: ", lotSize,
-                " | Entry: ", entryPrice,
-                " | SL: ", sl, " | TP: ", tp,
-                " | Sweep: ", sweptLevel);
-          if(EnableTradeReporting) {
-             ulong ticket = GetLastPositionTicket();
-             ReportTradeOpen(ticket, _Symbol, "sell", lotSize, bid, sl, tp, "Aggressive Sell");
-          }
-       }
-    }
+
+   if(sweepDirection == 1) {
+      if(trade.Buy(lotSize, _Symbol, ask, sl, tp, "BigDogsFX Agg Buy")) {
+         Print("AGGRESSIVE BUY | Lot: ", lotSize, " | Entry: ", entryPrice,
+               " | SL: ", sl, " | TP: ", tp, " | Sweep: ", sweptLevel);
+      }
+   } else {
+      if(trade.Sell(lotSize, _Symbol, bid, sl, tp, "BigDogsFX Agg Sell")) {
+         Print("AGGRESSIVE SELL | Lot: ", lotSize, " | Entry: ", entryPrice,
+               " | SL: ", sl, " | TP: ", tp, " | Sweep: ", sweptLevel);
+      }
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -1269,7 +1155,7 @@ AgentResult Agent1_SnDZone(ENUM_TIMEFRAMES tf) {
    int zoneType = CheckZoneTouch();
    if(zoneType == 0) return res;
 
-   int patternSignal = CheckCandlestickPatterns(zoneType);
+   int patternSignal = CheckCandlestickPatterns(zoneType, tf);
    if(patternSignal == 0 || zoneType != patternSignal) return res;
 
    SZone entryZone;
@@ -1280,8 +1166,8 @@ AgentResult Agent1_SnDZone(ENUM_TIMEFRAMES tf) {
       ? entryZone.bottom - (ExtraSLPips * pipSize)
       : entryZone.top + (ExtraSLPips * pipSize);
    res.tp = (patternSignal == 1)
-      ? FindNextStructureLevel(1, ask)
-      : FindNextStructureLevel(-1, bid);
+      ? FindNextStructureLevel(1, ask, tf)
+      : FindNextStructureLevel(-1, bid, tf);
    if(res.tp == 0) res.tp = res.entry + (patternSignal == 1 ? 50 * pipSize : -50 * pipSize);
    res.vote = (patternSignal == 1) ? VOTE_BUY : VOTE_SELL;
    res.reason = (patternSignal == 1) ? "Demand zone + pattern" : "Supply zone + pattern";
@@ -1450,7 +1336,7 @@ ConsensusResult GetConsensus() {
    result.entry = 0; result.sl = 0; result.tp = 0;
    result.agreeCount = 0; result.agentsSummary = "";
 
-   ENUM_TIMEFRAMES tf = IsAggressiveMode() ? AggressiveTimeframe : PERIOD_H1;
+   ENUM_TIMEFRAMES tf = AggressiveTimeframe;
    AgentResult agents[5];
    agents[0] = Agent1_SnDZone(tf);
    agents[1] = Agent2_LiquiditySweep(tf);
@@ -1513,39 +1399,148 @@ void ExecuteConsensusTrade(ConsensusResult &consensus) {
       : (consensus.sl - consensus.entry) / pipSize;
    if(slDistance < 5) return;
 
-   double lotSize = IsAggressiveMode()
-      ? CalculateAggressiveLotSize(slDistance)
-      : CalculateLotSize(slDistance);
+   double lotSize = CalculateAggressiveLotSize(slDistance);
 
    double sl = NormalizeDouble(consensus.sl, digits);
    double tp = NormalizeDouble(consensus.tp, digits);
    lotSize = NormalizeDouble(lotSize, 2);
 
-    if(consensus.direction == 1) {
-       if(trade.Buy(lotSize, _Symbol, ask, sl, tp,
-          "BigDogsFX Agreed Buy")) {
-          Print("CONSENSUS BUY | Agents: ", consensus.agreeCount,
-                " | Votes: ", consensus.agentsSummary,
-                " | Lot: ", lotSize, " | Entry: ", consensus.entry,
-                " | SL: ", sl, " | TP: ", tp);
-          if(EnableTradeReporting) {
-             ulong ticket = GetLastPositionTicket();
-             ReportTradeOpen(ticket, _Symbol, "buy", lotSize, ask, sl, tp, "Consensus Buy");
-          }
-       }
-    } else {
-       if(trade.Sell(lotSize, _Symbol, bid, sl, tp,
-          "BigDogsFX Agreed Sell")) {
-          Print("CONSENSUS SELL | Agents: ", consensus.agreeCount,
-                " | Votes: ", consensus.agentsSummary,
-                " | Lot: ", lotSize, " | Entry: ", consensus.entry,
-                " | SL: ", sl, " | TP: ", tp);
-          if(EnableTradeReporting) {
-             ulong ticket = GetLastPositionTicket();
-             ReportTradeOpen(ticket, _Symbol, "sell", lotSize, bid, sl, tp, "Consensus Sell");
-          }
-       }
-    }
+   if(consensus.direction == 1) {
+      if(trade.Buy(lotSize, _Symbol, ask, sl, tp, "BigDogsFX Agreed Buy")) {
+         Print("CONSENSUS BUY | Agents: ", consensus.agreeCount,
+               " | Votes: ", consensus.agentsSummary,
+               " | Lot: ", lotSize, " | Entry: ", consensus.entry,
+               " | SL: ", sl, " | TP: ", tp);
+      }
+   } else {
+      if(trade.Sell(lotSize, _Symbol, bid, sl, tp, "BigDogsFX Agreed Sell")) {
+         Print("CONSENSUS SELL | Agents: ", consensus.agreeCount,
+               " | Votes: ", consensus.agentsSummary,
+               " | Lot: ", lotSize, " | Entry: ", consensus.entry,
+               " | SL: ", sl, " | TP: ", tp);
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| GOD MODE: Evaluate combined signals and trade                     |
+//+------------------------------------------------------------------+
+void EvaluateGodModeEntry(GodModeSignal &sweep, GodModeSignal &zone, ConsensusResult &agents) {
+   int buySources = 0, sellSources = 0;
+   double entry = 0, sl = 0, tp = 0;
+   string reason = "";
+
+   //--- Count sources that agree on direction
+   if(sweep.hasSignal && sweep.direction == 1) { buySources++; reason += "Sweep "; }
+   if(sweep.hasSignal && sweep.direction == -1) { sellSources++; reason += "Sweep "; }
+   if(zone.hasSignal && zone.direction == 1) { buySources++; reason += "Zone "; }
+   if(zone.hasSignal && zone.direction == -1) { sellSources++; reason += "Zone "; }
+   if(agents.hasConsensus && agents.direction == 1) { buySources++; reason += "Agents "; }
+   if(agents.hasConsensus && agents.direction == -1) { sellSources++; reason += "Agents "; }
+
+   int agreedSources = MathMax(buySources, sellSources);
+   int direction = (buySources > sellSources) ? 1 : -1;
+
+   if(agreedSources < 1) return;
+
+   double pipSize = GetPipSize();
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+
+   //--- Calculate aggregated entry, SL, TP from all agreeing sources
+   int count = 0;
+
+   if(direction == 1) {
+      if(sweep.hasSignal && sweep.direction == 1) {
+         entry += sweep.entry; sl += sweep.sl; tp += sweep.tp; count++;
+      }
+      if(zone.hasSignal && zone.direction == 1) {
+         entry += zone.entry; sl += zone.sl; tp += zone.tp; count++;
+      }
+      if(agents.hasConsensus && agents.direction == 1) {
+         entry += agents.entry; sl += agents.sl; tp += agents.tp; count++;
+      }
+   } else {
+      if(sweep.hasSignal && sweep.direction == -1) {
+         entry += sweep.entry; sl += sweep.sl; tp += sweep.tp; count++;
+      }
+      if(zone.hasSignal && zone.direction == -1) {
+         entry += zone.entry; sl += zone.sl; tp += zone.tp; count++;
+      }
+      if(agents.hasConsensus && agents.direction == -1) {
+         entry += agents.entry; sl += agents.sl; tp += agents.tp; count++;
+      }
+   }
+
+   if(count == 0) return;
+
+   entry /= count;
+   //--- Use worst-case SL (tightest for buys, widest for sells)
+   if(direction == 1) {
+      double worstSL = DBL_MAX;
+      if(sweep.hasSignal && sweep.direction == 1 && sweep.sl < worstSL) worstSL = sweep.sl;
+      if(zone.hasSignal && zone.direction == 1 && zone.sl < worstSL) worstSL = zone.sl;
+      if(agents.hasConsensus && agents.direction == 1 && agents.sl < worstSL) worstSL = agents.sl;
+      sl = worstSL;
+   } else {
+      double worstSL = 0;
+      if(sweep.hasSignal && sweep.direction == -1 && sweep.sl > worstSL) worstSL = sweep.sl;
+      if(zone.hasSignal && zone.direction == -1 && zone.sl > worstSL) worstSL = zone.sl;
+      if(agents.hasConsensus && agents.direction == -1 && agents.sl > worstSL) worstSL = agents.sl;
+      sl = worstSL;
+   }
+   tp /= count;
+
+   //--- Verify SL distance
+   double slDistance = (direction == 1)
+      ? (entry - sl) / pipSize
+      : (sl - entry) / pipSize;
+   if(slDistance < 5) return;
+
+   //--- Size: full lot if 3 sources agree, reduced if 2/1
+   double lotSize;
+   if(agreedSources >= 3) {
+      lotSize = CalculateAggressiveLotSize(slDistance);
+   } else {
+      //--- 1-2 sources: use standard risk sizing
+      lotSize = CalculateAggressiveLotSize(slDistance);
+      //--- Reduce size if fewer sources agreed
+      if(agreedSources == 1) {
+         double halfRisk = AggressiveRiskPercent * 0.5;
+         double account = AccountInfoDouble(ACCOUNT_BALANCE);
+         double riskAmount = account * (halfRisk / 100.0);
+         double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+         double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+         lotSize = (riskAmount / (slDistance * tickValue / tickSize));
+         double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+         double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+         double lotStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+         lotSize = MathMax(lotSize, MinLotSize);
+         lotSize = MathMin(lotSize, MaxLotSize);
+         lotSize = MathMax(lotSize, minLot);
+         lotSize = MathMin(lotSize, maxLot);
+         lotSize = MathFloor(lotSize / lotStep) * lotStep;
+         lotSize = NormalizeDouble(lotSize, 2);
+      }
+   }
+
+   sl = NormalizeDouble(sl, digits);
+   tp = NormalizeDouble(tp, digits);
+
+   if(direction == 1) {
+      if(trade.Buy(lotSize, _Symbol, ask, sl, tp, "BigDogsFX God Buy")) {
+         Print("GOD MODE BUY | Sources: ", reason, " (", agreedSources, "/3)",
+               " | Lot: ", lotSize, " | Entry: ", entry,
+               " | SL: ", sl, " | TP: ", tp);
+      }
+   } else {
+      if(trade.Sell(lotSize, _Symbol, bid, sl, tp, "BigDogsFX God Sell")) {
+         Print("GOD MODE SELL | Sources: ", reason, " (", agreedSources, "/3)",
+               " | Lot: ", lotSize, " | Entry: ", entry,
+               " | SL: ", sl, " | TP: ", tp);
+      }
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -1555,251 +1550,50 @@ void ManageOpenTrades() {
    double pipSize = GetPipSize();
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   
+
    for(int i = PositionsTotal() - 1; i >= 0; i--) {
       ulong ticket = PositionGetTicket(i);
       if(!PositionSelectByTicket(ticket)) continue;
       if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
       if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
-      
+
       double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
       double currentSL = PositionGetDouble(POSITION_SL);
       double currentTP = PositionGetDouble(POSITION_TP);
       long posType = PositionGetInteger(POSITION_TYPE);
-      
+
       if(posType == POSITION_TYPE_BUY) {
          double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
          double profitPips = (bid - openPrice) / pipSize;
-         
+
          if(profitPips >= BreakevenPips && currentSL < openPrice) {
             double newSL = openPrice + (5 * point);
             trade.PositionModify(ticket, NormalizeDouble(newSL, digits), currentTP);
             Print("Breakeven triggered for BUY #", ticket);
          }
-         
+
          if(profitPips >= TrailingStartPips) {
             double newSL = bid - (TrailingDistance * pipSize);
             if(newSL > currentSL + (5 * point)) {
                trade.PositionModify(ticket, NormalizeDouble(newSL, digits), currentTP);
             }
          }
-         
+
       } else if(posType == POSITION_TYPE_SELL) {
          double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
          double profitPips = (openPrice - ask) / pipSize;
-         
+
          if(profitPips >= BreakevenPips && (currentSL > openPrice || currentSL == 0)) {
             double newSL = openPrice - (5 * point);
             trade.PositionModify(ticket, NormalizeDouble(newSL, digits), currentTP);
             Print("Breakeven triggered for SELL #", ticket);
          }
-         
+
          if(profitPips >= TrailingStartPips) {
             double newSL = ask + (TrailingDistance * pipSize);
             if(currentSL == 0 || newSL < currentSL - (5 * point)) {
                trade.PositionModify(ticket, NormalizeDouble(newSL, digits), currentTP);
             }
-         }
-      }
-   }
-}
-
-//+------------------------------------------------------------------+
-//| WebRequest helper - HTTP POST to backend                           |
-//+------------------------------------------------------------------+
-string WebRequestSend(const string endpoint, const string jsonStr) {
-   if(!EnableTradeReporting) return "";
-   if(BackendURL == "" || EAApiKey == "") return "";
-
-   string method = "POST";
-   string url = BackendURL + endpoint;
-   string headers = "Content-Type: application/json\r\nx-ea-api-key: " + EAApiKey + "\r\n";
-
-   char data[];
-   char resultData[];
-   StringToCharArray(jsonStr, data);
-
-   ResetLastError();
-   string resultHeaders;
-   int res = WebRequest(method, url, headers, 5000, data, resultData, resultHeaders);
-
-   if(res == -1) {
-      int err = GetLastError();
-      if(err != 0) Print("WebRequest error: ", err, " URL: ", url);
-      return "";
-   }
-
-   return CharArrayToString(resultData);
-}
-
-//+------------------------------------------------------------------+
-//| Report trade open to backend                                       |
-//+------------------------------------------------------------------+
-void ReportTradeOpen(const ulong ticket, const string symbol, const string typeCode,
-                     const double lotSize, const double entryPrice, const double sl,
-                     const double tp, const string comment) {
-   if(!EnableTradeReporting) return;
-   if(ticket == 0) return;
-
-   for(int i = 0; i < ArraySize(reportedTickets); i++) {
-      if(reportedTickets[i] == IntegerToString(ticket)) return;
-   }
-
-   int idx = ArraySize(reportedTickets);
-   ArrayResize(reportedTickets, idx + 1);
-   reportedTickets[idx] = IntegerToString(ticket);
-
-   MqlDateTime dt;
-   TimeCurrent(dt);
-   string session = "London";
-   if(dt.hour >= 13 && dt.hour < 22) session = "New York";
-   else if(dt.hour >= 3 && dt.hour < 11) session = "Asia";
-
-   string mode = IsAggressiveMode() ? "aggressive" : "normal";
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-
-   string jsonData = "{";
-   jsonData += "\"ticket\":\"" + IntegerToString(ticket) + "\",";
-   jsonData += "\"symbol\":\"" + symbol + "\",";
-   jsonData += "\"type\":\"" + typeCode + "\",";
-   jsonData += "\"lotSize\":" + DoubleToString(lotSize, 2) + ",";
-   jsonData += "\"entryPrice\":" + DoubleToString(entryPrice, digits) + ",";
-   jsonData += "\"sl\":" + DoubleToString(sl, digits) + ",";
-   jsonData += "\"tp\":" + DoubleToString(tp, digits) + ",";
-   jsonData += "\"status\":\"open\",";
-   jsonData += "\"session\":\"" + session + "\",";
-   jsonData += "\"adaptiveMode\":\"" + mode + "\"";
-   jsonData += "}";
-
-   string response = WebRequestSend("/api/trades/report", jsonData);
-   if(response != "") {
-      Print("Trade reported: #", ticket, " ", symbol, " ", typeCode);
-   }
-}
-
-//+------------------------------------------------------------------+
-//| Report trade close to backend                                      |
-//+------------------------------------------------------------------+
-void ReportTradeClose(const ulong ticket, const double exitPrice,
-                      const double pips, const double moneyMade,
-                      const string resultReason) {
-   if(!EnableTradeReporting) return;
-   if(ticket == 0) return;
-
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-
-   string jsonData = "{";
-   jsonData += "\"ticket\":\"" + IntegerToString(ticket) + "\",";
-   jsonData += "\"symbol\":\"" + _Symbol + "\",";
-   jsonData += "\"exitPrice\":" + DoubleToString(exitPrice, digits) + ",";
-   jsonData += "\"pips\":" + DoubleToString(pips, 1) + ",";
-   jsonData += "\"moneyMade\":" + DoubleToString(moneyMade, 2) + ",";
-   jsonData += "\"status\":\"closed\",";
-   jsonData += "\"resultReason\":\"" + resultReason + "\"";
-   jsonData += "}";
-
-   string response = WebRequestSend("/api/trades/report", jsonData);
-   if(response != "") {
-      Print("Trade close reported: #", ticket, " - ", resultReason);
-   }
-}
-
-//+------------------------------------------------------------------+
-//| Report trade SL/TP update to backend                               |
-//+------------------------------------------------------------------+
-void ReportTradeUpdate(const ulong ticket, const double newSL, const double newTP) {
-   if(!EnableTradeReporting) return;
-   if(ticket == 0) return;
-
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-
-   string jsonData = "{";
-   jsonData += "\"ticket\":\"" + IntegerToString(ticket) + "\",";
-   jsonData += "\"symbol\":\"" + _Symbol + "\",";
-   jsonData += "\"sl\":" + DoubleToString(newSL, digits) + ",";
-   jsonData += "\"tp\":" + DoubleToString(newTP, digits) + ",";
-   jsonData += "\"status\":\"open\"";
-   jsonData += "}";
-
-   string response = WebRequestSend("/api/trades/report", jsonData);
-   if(response != "") {
-      Print("Trade update reported: #", ticket);
-   }
-}
-
-//+------------------------------------------------------------------+
-//| Get most recent position ticket for our EA                         |
-//+------------------------------------------------------------------+
-ulong GetLastPositionTicket() {
-   ulong latestTicket = 0;
-   datetime latestTime = 0;
-
-   for(int i = PositionsTotal() - 1; i >= 0; i--) {
-      ulong ticket = PositionGetTicket(i);
-      if(PositionSelectByTicket(ticket)) {
-         if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
-            PositionGetInteger(POSITION_MAGIC) == MagicNumber) {
-            datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
-            if(openTime > latestTime) {
-               latestTime = openTime;
-               latestTicket = ticket;
-            }
-         }
-      }
-   }
-   return latestTicket;
-}
-
-//+------------------------------------------------------------------+
-//| Trade transaction event - detects closes and modifications         |
-//+------------------------------------------------------------------+
-void OnTradeTransaction(const MqlTradeTransaction &trans,
-                        const MqlTradeRequest &request,
-                        const MqlTradeResult &result) {
-   if(!EnableTradeReporting) return;
-
-   if(trans.type == TRADE_TRANSACTION_DEAL_ADD) {
-      ulong dealTicket = trans.deal;
-      if(dealTicket == 0) return;
-
-      if(HistoryDealSelect(dealTicket)) {
-         string dealSymbol = HistoryDealGetString(dealTicket, DEAL_SYMBOL);
-         if(dealSymbol != _Symbol) return;
-
-         long entryType = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
-         if(entryType == 1 || entryType == 2) {
-            ulong positionId = HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID);
-            double profit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
-            double swap = HistoryDealGetDouble(dealTicket, DEAL_SWAP);
-            double commission = HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
-            double volume = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
-            double price = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
-
-            double totalProfit = profit + swap + commission;
-            double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
-            double pipSize = GetPipSize();
-            double pips = 0;
-            if(tickValue > 0 && volume > 0) {
-               pips = totalProfit / (volume * tickValue / pipSize);
-            }
-
-            string reason = "Stop Loss";
-            if(totalProfit > 0) reason = "Take Profit";
-            if(entryType == 2) reason = "Reverse";
-
-            ReportTradeClose(positionId, price, pips, totalProfit, reason);
-         }
-      }
-   }
-
-   if(trans.type == TRADE_TRANSACTION_POSITION) {
-      ulong positionTicket = trans.position;
-      if(positionTicket > 0 && PositionSelectByTicket(positionTicket)) {
-         if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
-            PositionGetInteger(POSITION_MAGIC) == MagicNumber) {
-            double newSL = PositionGetDouble(POSITION_SL);
-            double newTP = PositionGetDouble(POSITION_TP);
-            ReportTradeUpdate(positionTicket, newSL, newTP);
          }
       }
    }
